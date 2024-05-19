@@ -94,25 +94,36 @@ def get_reporting_table_content():
         driver.get("https://mrv.emsa.europa.eu/#public/emission-report")
         time.sleep(30)
 
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, '//*[@id="exportablegrid-1137-body"]'))
+        table_element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, '//*[@id="gridview-1152"]/div[2]'))
         )
+        table_rows = table_element.find_elements(By.TAG_NAME, "tr")
+        table_data = []
+        for row in table_rows:
+            row_data = []
+            cells = row.find_elements(By.TAG_NAME, "td")
+            for cell in cells:
+                row_data.append(cell.text)
+            table_data.append(row_data)
+        
+        logger.info("Got the table data extract")
+        logger.info(table_data)
+        result = []
+        
+        logger.info('Converting the data to a dataframe')
+        for row in table_data:
+            data = {}
+            data["Reporting Period"] = row[1].split("Reporting Period")[1]
+            data["Version"] = row[2].split("Version")[1]
+            data["Generation Date"] = row[3].split("Generation Date")[1]
+            data["File"] = row[4].split("File")[1]
+            result.append(data)
+        new_report_table_data_df = pd.DataFrame(result)
 
-        tables = driver.find_element(By.XPATH, '//*[@id="exportablegrid-1137-body"]')
-        elements = tables.find_elements(By.TAG_NAME, "table")
-        logger.info(f"All elements: {elements}")
-        reports = []
+        logger.info('Got the new dataframe')
+        logger.info(new_report_table_data_df.head())
 
-        for table in elements:
-            logger.info(f"Table: {table.text}")
-            result_dict = extract_table_elements(data=table.text)
-            logger.info(result_dict)
-            reports.append(result_dict)
-
-        logger.info("Got the table data of the reports")
-        logger.info(pd.DataFrame(reports).head())
-
-        return pd.DataFrame(reports)
+        return new_report_table_data_df
 
     except Exception as e:
         logger.error(f"An error occurred while getting the data: {e}")
@@ -258,10 +269,9 @@ def main():
     logger.info("New metadata from the website")
     logger.info(reports_df_new.head())
 
-    reports_df_old = pd.read_csv("reports_metadata.csv")
-    reports_df_old = fix_column_types(reports_df_old)
+    reports_df_old = pd.read_csv("../data/raw/reports_metadata.csv")
 
-    logger.info("Current metadata from local master file")
+    logger.info("Report versions from previous run")
     logger.info(reports_df_old.head())
 
     reports_df_updated = compare_versions_and_download_file(
