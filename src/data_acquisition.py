@@ -200,13 +200,13 @@ def compare_versions_and_download_file(current_df, new_df):
             year = row["Reporting Period"]
             filename = f"{row['File_new'].strip()}.xlsx"
 
-            upload_file(
-                file_name=filepath,
-                bucket="eu-marv-ship-emissions",
-                object_name=f"raw/{year}/{filename}",
-            )
+            # upload_file(
+            #     file_name=filepath,
+            #     bucket="eu-marv-ship-emissions",
+            #     object_name=f"raw/{year}/{filename}",
+            # )
 
-            delete_file_from_local_directory(filepath=filepath)
+            # delete_file_from_local_directory(filepath=filepath)
 
             return current_df
     else:
@@ -268,8 +268,11 @@ def main():
 
     logger.info("New metadata from the website")
     logger.info(reports_df_new.head())
+    logger.info(reports_df_new.dtypes)
+    
+    print(os.getcwd())
 
-    reports_df_old = pd.read_csv("../data/raw/reports_metadata.csv")
+    reports_df_old = pd.read_csv("reports_metadata.csv")
 
     logger.info("Report versions from previous run")
     logger.info(reports_df_old.head())
@@ -277,6 +280,8 @@ def main():
     reports_df_updated = compare_versions_and_download_file(
         current_df=reports_df_old, new_df=reports_df_new
     )
+    
+    print(reports_df_updated)
 
     logger.info("Got new files and added them to the S3 bucket")
 
