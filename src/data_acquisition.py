@@ -34,49 +34,6 @@ def prepare_selenium_params():
     return driver
 
 
-def extract_table_elements(data):
-    # Define regular expressions to extract data
-    reporting_period_pattern = re.compile(r"Reporting Period(\d+)")
-    version_pattern = re.compile(r"Version(\d+)")
-    generation_date_pattern = re.compile(r"Generation Date([\d/]+)")
-    file_pattern = re.compile(r"File(.+)$")
-
-    # Initialize variables to store extracted values
-    reporting_period = None
-    version = None
-    generation_date = None
-    file_data = None
-
-    # Extract data using regular expressions
-    match_reporting_period = reporting_period_pattern.search(data)
-    if match_reporting_period:
-        reporting_period = int(match_reporting_period.group(1))
-
-    match_version = version_pattern.search(data)
-    if match_version:
-        version = int(match_version.group(1))
-
-    match_generation_date = generation_date_pattern.search(data)
-    if match_generation_date:
-        generation_date = match_generation_date.group(1)
-
-    match_file = file_pattern.search(data)
-    if match_file:
-        file_data = match_file.group(1).strip()
-
-    # Create a dictionary with the extracted data
-    data_dict = {
-        "Reporting Period": reporting_period,
-        "Version": version,
-        "Generation Date": generation_date,
-        "File": file_data,
-    }
-
-    # Print the dictionary
-    logger.info(data_dict)
-    return data_dict
-
-
 def get_reporting_table_content():
     """
     This function gets the metadata from the table in the website that contains
@@ -141,7 +98,7 @@ def download_new_file(report):
     driver = prepare_selenium_params()
 
     driver.get("https://mrv.emsa.europa.eu/#public/emission-report")
-    time.sleep(10)
+    time.sleep(20)
 
     try:
         logger.info(f"Downloading the new report: {report}")
@@ -151,7 +108,7 @@ def download_new_file(report):
         link.click()
         time.sleep(20)
 
-        logger.info("File is downloaded")
+        logger.info(f"File {report} is downloaded in ")
 
     except Exception as e:
         logger.error(f"An error occurred while getting the data: {e}")
@@ -160,10 +117,58 @@ def download_new_file(report):
         driver.quit()
 
 
-def compare_versions_and_download_file(current_df, new_df):
-    """
-    This function compares the version of the file from the new time we pull the data
-    and it compares the new version with the old version that is on disk
+# def download_file(filename: str):
+#     """
+#     This function compares the version of the file from the new time we pull the data
+#     and it compares the new version with the old version that is on disk
+#     """
+#     logger.info("Comparing the versions in the current and new dataframes")
+
+
+#     if not new_versions.empty:
+#         logger.info(
+#             f"New version: {new_versions['Version_new']} was found for file: {new_versions['File_new']}"
+#         )
+
+#         download_directory = "/tmp"
+#         for index, row in new_versions.iterrows():
+#             logger.info("Updating the current dataframe with the new versions")
+
+#             current_df.loc[
+#                 current_df["Reporting Period"] == row["Reporting Period"], "Version"
+#             ] = row["Version_new"]
+#             current_df.loc[
+#                 current_df["Reporting Period"] == row["Reporting Period"], "Generation Date"
+#             ] = row["Generation Date_new"]
+#             current_df.loc[current_df["Reporting Period"] == row["Reporting Period"], "File"] = row[
+#                 "File_new"
+#             ]
+
+#             download_new_file(report=row["File_new"].strip())
+
+#             filepath = f"{download_directory}/{row['File_new'].strip()}.xlsx"
+#             year = row["Reporting Period"]
+#             filename = f"{row['File_new'].strip()}.xlsx"
+
+#             # upload_file(
+#             #     file_name=filepath,
+#             #     bucket="eu-marv-ship-emissions",
+#             #     object_name=f"raw/{year}/{filename}",
+#             # )
+
+#             # delete_file_from_local_directory(filepath=filepath)
+
+#         return current_df
+#     else:
+#         logger.info("There are no new versions of the data in the website")
+
+def check_for_new_report_versions(current_df, new_df):
+    """Takes the dataframe with the table data extracted at current run and the dataframe with the table data 
+    from the previous run and compares them to check for new versions of the report
+
+    Args:
+        current_df (DataFrame): contains the data from the previous run
+        new_df (DataFrame): contains the data from the current run
     """
     logger.info("Comparing the versions in the current and new dataframes")
 
@@ -171,46 +176,9 @@ def compare_versions_and_download_file(current_df, new_df):
         current_df, new_df, on="Reporting Period", how="outer", suffixes=("_current", "_new")
     )
     new_versions = merged_df[merged_df["Version_new"] > merged_df["Version_current"]]
-
-    logger.info("New versions")
-    logger.info(new_versions.head())
-
-    if not new_versions.empty:
-        logger.info(
-            f"New version: {new_versions['Version_new']} was found for file: {new_versions['File_new']}"
-        )
-
-        download_directory = "/tmp"
-        for index, row in new_versions.iterrows():
-            logger.info("Updating the current dataframe with the new versions")
-
-            current_df.loc[
-                current_df["Reporting Period"] == row["Reporting Period"], "Version"
-            ] = row["Version_new"]
-            current_df.loc[
-                current_df["Reporting Period"] == row["Reporting Period"], "Generation Date"
-            ] = row["Generation Date_new"]
-            current_df.loc[current_df["Reporting Period"] == row["Reporting Period"], "File"] = row[
-                "File_new"
-            ]
-
-            download_new_file(report=row["File_new"].strip())
-
-            filepath = f"{download_directory}/{row['File_new'].strip()}.xlsx"
-            year = row["Reporting Period"]
-            filename = f"{row['File_new'].strip()}.xlsx"
-
-            # upload_file(
-            #     file_name=filepath,
-            #     bucket="eu-marv-ship-emissions",
-            #     object_name=f"raw/{year}/{filename}",
-            # )
-
-            # delete_file_from_local_directory(filepath=filepath)
-
-            return current_df
-    else:
-        logger.info("There are no new versions of the data in the website")
+    
+    return new_versions
+    
 
 
 def delete_file_from_local_directory(filepath):
@@ -276,14 +244,40 @@ def main():
 
     logger.info("Report versions from previous run")
     logger.info(reports_df_old.head())
-
-    reports_df_updated = compare_versions_and_download_file(
-        current_df=reports_df_old, new_df=reports_df_new
-    )
     
-    print(reports_df_updated)
+    logger.info('Check for new versions of the reports')
+    df_with_new_versions = check_for_new_report_versions(current_df=reports_df_old, new_df=reports_df_new)
 
-    logger.info("Got new files and added them to the S3 bucket")
+    download_directory = "/tmp"
+    
+    if not df_with_new_versions.empty:
+        new_files = df_with_new_versions['File_new'].to_list()
+        logger.info(f"Found {len(new_files)} new files that need to be downloaded")
+        
+        for new_file_name in new_files:
+            new_file_name = new_file_name.strip()
+            download_new_file(report=new_file_name)
+            
+            
+            filepath = f"{download_directory}/{new_file_name}.xlsx"
+            year = new_file_name.split('-')[0]
+            filename = f"{new_file_name}.xlsx"
+            
+            # upload_file(
+            #     file_name=filepath,
+            #     bucket="eu-marv-ship-emissions",
+            #     object_name=f"raw/{year}/{filename}",
+            # )
+
+            delete_file_from_local_directory(filepath=filepath)
+    
+    reports_df_updated = df_with_new_versions[['Reporting Period', 'Version_new', 'Generation Date_new', 'File_new']].copy()
+    reports_df_updated.rename(columns={'Version_new': 'Version', 'Generation Date_new': 'Generation Date', 'File_new': 'File'}, inplace=True)
+    logger.info('Updated the current df')
+    
+
+    
+    # logger.info("Got new files and added them to the S3 bucket")
 
     reports_df_updated.to_csv("reports_metadata.csv", index=False)
 
