@@ -6,20 +6,21 @@ import boto3
 
 import pandas as pd
 
+from sys import stdout
 from botocore.exceptions import ClientError
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
-LOG_FORMAT = "%(levelname)s %(asctime)s - %(message)s"
-logging.basicConfig(
-    filename="logfile.log",
-    level=logging.DEBUG,
-    format=LOG_FORMAT,
-    filemode="w",
-)
-logger = logging.getLogger()
+logger = logging.getLogger('mylogger')
+
+logger.setLevel(logging.DEBUG) # set logger level
+logFormatter = logging.Formatter\
+("%(name)-12s %(asctime)s %(levelname)-8s %(filename)s:%(funcName)s %(message)s")
+consoleHandler = logging.StreamHandler(stdout) #set streamhandler to stdout
+consoleHandler.setFormatter(logFormatter)
+logger.addHandler(consoleHandler)
 
 
 def prepare_selenium_params():
