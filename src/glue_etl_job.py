@@ -46,17 +46,15 @@ job = Job(glueContext)
 job.init(args['JOB_NAME'], args)
 
 # Script generated for node AWS Glue Data Catalog
-AWSGlueDataCatalog_node1717857622669 = glueContext.create_dynamic_frame.from_catalog(database="ship-emissions-database", table_name="interim_data", transformation_ctx="AWSGlueDataCatalog_node1717857622669")
+AWSGlueDataCatalog_node1719433405033 = glueContext.create_dynamic_frame.from_catalog(database="ship-emissions-database", table_name="interim_data", transformation_ctx="AWSGlueDataCatalog_node1719433405033")
 
 # Script generated for node Custom Transform
-CustomTransform_node1717857668146 = MyTransform(glueContext, DynamicFrameCollection({"AWSGlueDataCatalog_node1717857622669": AWSGlueDataCatalog_node1717857622669}, glueContext))
+CustomTransform_node1719433433899 = MyTransform(glueContext, DynamicFrameCollection({"AWSGlueDataCatalog_node1719433405033": AWSGlueDataCatalog_node1719433405033}, glueContext))
 
 # Script generated for node Select From Collection
-SelectFromCollection_node1717858066056 = SelectFromCollection.apply(dfc=CustomTransform_node1717857668146, key=list(CustomTransform_node1717857668146.keys())[0], transformation_ctx="SelectFromCollection_node1717858066056")
+SelectFromCollection_node1719433683684 = SelectFromCollection.apply(dfc=CustomTransform_node1719433433899, key=list(CustomTransform_node1719433433899.keys())[0], transformation_ctx="SelectFromCollection_node1719433683684")
 
-# Script generated for node Amazon S3
-AmazonS3_node1717858085507 = glueContext.getSink(path="s3://eu-marv-ship-emissions/clean/", connection_type="s3", updateBehavior="UPDATE_IN_DATABASE", partitionKeys=[], enableUpdateCatalog=True, transformation_ctx="AmazonS3_node1717858085507")
-AmazonS3_node1717858085507.setCatalogInfo(catalogDatabase="ship-emissions-database",catalogTableName="clean_emissions_data")
-AmazonS3_node1717858085507.setFormat("glueparquet", compression="snappy")
-AmazonS3_node1717858085507.writeFrame(SelectFromCollection_node1717858066056)
+# Script generated for node AWS Glue Data Catalog
+AWSGlueDataCatalog_node1719433468617 = glueContext.write_dynamic_frame.from_catalog(frame=SelectFromCollection_node1719433683684, database="ship-emissions-database", table_name="clean_emissions_data", additional_options={"enableUpdateCatalog": True, "updateBehavior": "UPDATE_IN_DATABASE"}, transformation_ctx="AWSGlueDataCatalog_node1719433468617")
+
 job.commit()
