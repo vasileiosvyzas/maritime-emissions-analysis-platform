@@ -58,16 +58,17 @@ def lambda_handler(event, context):
     rows = result['ResultSet']['Rows']
     print('ROWS')
     print(rows)
-    # Convert the results into a list of dictionaries
     result_data = []
+    
     for row in rows[1:]:
+        row_dict = {}
         for i in range(len(columns)):
             print(row['Data'][i])
             if row['Data'][i]:
-                data = {columns[i]['Name']: row['Data'][i]['VarCharValue']}
+                row_dict[columns[i]['Name']] = row['Data'][i]['VarCharValue']
             else:
-                data = {columns[i]['Name']: 'NaN'}
-            result_data.append(data)
+                row_dict[columns[i]['Name']] = 'NaN'
+            result_data.append(row_dict)
     
     return {
         'statusCode': 200,
