@@ -109,7 +109,7 @@ def download_new_file(report):
         link.click()
         time.sleep(20)
 
-        logger.info(f"File {report} is downloaded in ")
+        logger.info(f"File {report} is downloaded")
 
     except Exception as e:
         logger.error(f"An error occurred while getting the data: {e}")
@@ -129,8 +129,8 @@ def check_for_new_report_versions(current_df, new_df):
     logger.info("Comparing the versions in the current and new dataframes")
 
     merged_df = pd.merge(
-        current_df, new_df, on="Reporting Period", how="outer", suffixes=("_current", "_new")
-    )
+        current_df, new_df, on="Reporting Period", how="right", suffixes=("_current", "_new")
+    ).fillna(0)
     new_versions = merged_df[merged_df["Version_new"] > merged_df["Version_current"]]
     
     return new_versions
@@ -216,18 +216,17 @@ def main():
             new_file_name = new_file_name.strip()
             download_new_file(report=new_file_name)
             
+            # filepath = f"{download_directory}/{new_file_name}.xlsx"
+            # year = new_file_name.split('-')[0]
+            # filename = f"{new_file_name}.xlsx"
             
-            filepath = f"{download_directory}/{new_file_name}.xlsx"
-            year = new_file_name.split('-')[0]
-            filename = f"{new_file_name}.xlsx"
-            
-            upload_file(
-                file_name=filepath,
-                bucket="eu-marv-ship-emissions",
-                object_name=f"raw/{year}/{filename}",
-            )
+            # upload_file(
+            #     file_name=filepath,
+            #     bucket="eu-marv-ship-emissions",
+            #     object_name=f"raw/{year}/{filename}",
+            # )
 
-            delete_file_from_local_directory(filepath=filepath)
+            # delete_file_from_local_directory(filepath=filepath)
     
     reports_df_updated = df_with_new_versions[['Reporting Period', 'Version_new', 'Generation Date_new', 'File_new']].copy()
     reports_df_updated.rename(columns={'Version_new': 'Version', 'Generation Date_new': 'Generation Date', 'File_new': 'File'}, inplace=True)
