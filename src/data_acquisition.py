@@ -216,17 +216,17 @@ def main():
             new_file_name = new_file_name.strip()
             download_new_file(report=new_file_name)
             
-            # filepath = f"{download_directory}/{new_file_name}.xlsx"
-            # year = new_file_name.split('-')[0]
-            # filename = f"{new_file_name}.xlsx"
+            filepath = f"{download_directory}/{new_file_name}.xlsx"
+            year = new_file_name.split('-')[0]
+            filename = f"{new_file_name}.xlsx"
             
-            # upload_file(
-            #     file_name=filepath,
-            #     bucket="eu-marv-ship-emissions",
-            #     object_name=f"raw/{year}/{filename}",
-            # )
+            upload_file(
+                file_name=filepath,
+                bucket="eu-marv-ship-emissions",
+                object_name=f"raw/{year}/{filename}",
+            )
 
-            # delete_file_from_local_directory(filepath=filepath)
+            delete_file_from_local_directory(filepath=filepath)
     
     reports_df_updated = df_with_new_versions[['Reporting Period', 'Version_new', 'Generation Date_new', 'File_new']].copy()
     reports_df_updated.rename(columns={'Version_new': 'Version', 'Generation Date_new': 'Generation Date', 'File_new': 'File'}, inplace=True)

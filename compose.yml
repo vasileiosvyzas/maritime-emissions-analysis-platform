@@ -28,11 +28,6 @@ services:
       - type: volume
         source: data-volume
         target: /tmp
-    logging:
-      driver: awslogs
-      options:
-        awslogs-group: /ecs/selenium-and-python-container
-        awslogs-stream: python-script-logs
     restart: always
 
 volumes:
