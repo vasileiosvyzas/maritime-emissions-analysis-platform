@@ -58,6 +58,7 @@ def lambda_handler(event, context):
     rows = result['ResultSet']['Rows']
     print('ROWS')
     print(rows)
+    # Convert the results into a list of dictionaries
     result_data = []
     
     for row in rows[1:]:

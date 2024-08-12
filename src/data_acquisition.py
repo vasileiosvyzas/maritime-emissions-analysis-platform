@@ -6,12 +6,16 @@ import boto3
 
 import pandas as pd
 
+from io import StringIO
 from sys import stdout
 from botocore.exceptions import ClientError
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
+from dotenv import load_dotenv
+
+load_dotenv()  # take environment variables
 
 logger = logging.getLogger('mylogger')
 
@@ -132,6 +136,7 @@ def check_for_new_report_versions(current_df, new_df):
         current_df, new_df, on="Reporting Period", how="right", suffixes=("_current", "_new")
     ).fillna(0)
     new_versions = merged_df[merged_df["Version_new"] > merged_df["Version_current"]]
+    logger.info(new_versions)
     
     return new_versions
     
@@ -182,10 +187,37 @@ def upload_file(file_name, bucket, object_name=None):
 
         s3_client.upload_file(file_name, bucket, object_name)
     except ClientError as e:
-        logging.error(e)
+        logger.error(e)
         return False
     return True
 
+def change_format_and_upload_to_interim_bucket(filepath ,bucket_name, s3_file_name):
+    logger.info('Change the file to CSV and upload it to S3')
+    
+    df_raw = pd.read_excel(filepath, engine='openpyxl', header=2)
+    logger.info(f"File size: {df_raw.shape}")
+    logger.info(f"Header")
+    logger.info(df_raw.head())
+    
+    s3_client = boto3.client(
+        "s3", 
+        region_name="us-east-1"
+    )
+    
+    try:
+        # Convert dataframe to CSV
+        csv_buffer = StringIO()
+        df_raw.to_csv(csv_buffer, index=False)
+
+        # Upload the CSV to S3
+        s3_client.put_object(
+            Bucket=bucket_name,
+            Key=s3_file_name,
+            Body=csv_buffer.getvalue()
+        )
+        
+    except ClientError as e:
+        logger.error(e)
 
 def main():
     logger.info("Getting the new metadata from the reports table")
@@ -213,6 +245,8 @@ def main():
         logger.info(f"Found {len(new_files)} new files that need to be downloaded")
         
         for new_file_name in new_files:
+            logger.info(f"Processing file {new_file_name}")
+            
             new_file_name = new_file_name.strip()
             download_new_file(report=new_file_name)
             
@@ -222,9 +256,15 @@ def main():
             
             upload_file(
                 file_name=filepath,
-                bucket="eu-marv-ship-emissions",
+                bucket=os.environ("BUCKET_NAME"),
                 object_name=f"raw/{year}/{filename}",
             )
+            
+            csv_file_name = f"{new_file_name}.csv"
+            change_format_and_upload_to_interim_bucket(
+                filepath=filepath, 
+                bucket_name=os.environ("BUCKET_NAME"), 
+                s3_file_name=f"interim/reporting_period={year}/{csv_file_name}")
 
             delete_file_from_local_directory(filepath=filepath)
     
