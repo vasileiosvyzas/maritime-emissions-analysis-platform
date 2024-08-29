@@ -195,6 +195,8 @@ def change_format_and_upload_to_interim_bucket(filepath ,bucket_name, s3_file_na
     logger.info('Change the file to CSV and upload it to S3')
     
     df_raw = pd.read_excel(filepath, engine='openpyxl', header=2)
+    df_raw.drop(['Verifier Address'], axis=1, inplace=True)
+    
     logger.info(f"File size: {df_raw.shape}")
     logger.info(f"Header")
     logger.info(df_raw.head())
@@ -228,7 +230,15 @@ def main():
     logger.info(reports_df_new.head())
     logger.info(reports_df_new.dtypes)
     
-    print(os.getcwd())
+    s3 = boto3.client(
+        's3', 
+        region_name="us-east-1"
+    )
+    
+    s3.download_file(
+        os.environ['BUCKET_NAME'],
+        "raw/reports_metadata.csv",
+        'reports_metadata.csv')
 
     reports_df_old = pd.read_csv("reports_metadata.csv")
 
@@ -256,14 +266,14 @@ def main():
             
             upload_file(
                 file_name=filepath,
-                bucket=os.environ("BUCKET_NAME"),
+                bucket=os.environ['BUCKET_NAME'],
                 object_name=f"raw/{year}/{filename}",
             )
             
             csv_file_name = f"{new_file_name}.csv"
             change_format_and_upload_to_interim_bucket(
                 filepath=filepath, 
-                bucket_name=os.environ("BUCKET_NAME"), 
+                bucket_name=os.environ['BUCKET_NAME'], 
                 s3_file_name=f"interim/reporting_period={year}/{csv_file_name}")
 
             delete_file_from_local_directory(filepath=filepath)
@@ -272,7 +282,17 @@ def main():
     reports_df_updated.rename(columns={'Version_new': 'Version', 'Generation Date_new': 'Generation Date', 'File_new': 'File'}, inplace=True)
     logger.info('Updated the current df')
     
-    reports_df_updated.to_csv("reports_metadata.csv", index=False)
+    # reports_df_updated.to_csv("reports_metadata.csv", index=False)
+    
+    csv_buffer = StringIO()
+    reports_df_updated.to_csv(csv_buffer, index=False)
+
+    # Upload the CSV to S3
+    s3.put_object(
+        Bucket=os.environ['BUCKET_NAME'],
+        Key=f"raw/reports_metadata.csv",
+        Body=csv_buffer.getvalue()
+    )
 
 
 if __name__ == "__main__":
