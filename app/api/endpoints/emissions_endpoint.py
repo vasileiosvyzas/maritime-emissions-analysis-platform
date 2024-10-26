@@ -17,6 +17,8 @@ TABLE = os.environ["TABLE"]
 OUTPUT_LOCATION = os.environ["OUTPUT_LOCATION"]
 API_URL = os.environ['API_URL']
 
+current_datetime = datetime.now()
+
 def random_string(length):
     return "".join(
         random.choice(string.ascii_lowercase + string.digits) for _ in range(length)
@@ -129,6 +131,8 @@ def emissions_data_without_conditions(page, limit):
     
     return {
         'metadata': {
+            'timestamp': current_datetime.strftime("%d-%m-%Y %H:%M:%S"),
+            'request_id': random_string(10),
             "total_results": total_results,
             "page": page,
             "per_page": limit,
@@ -165,6 +169,8 @@ def emissions_per_ship_id(ship_id):
 
     return {
         'metadata': {
+            'timestamp': current_datetime.strftime("%d-%m-%Y %H:%M:%S"),
+            'request_id': random_string(10),
             "total_results": total_results,
         },
         'results': response
@@ -215,6 +221,8 @@ def emissions_per_ship_type_and_year(ship_type, year, page, limit):
     
     return {
         'metadata': {
+            'timestamp': current_datetime.strftime("%d-%m-%Y %H:%M:%S"),
+            'request_id': random_string(10),
             "total_results": total_results,
             "page": page,
             "per_page": limit,
@@ -262,6 +270,8 @@ def emissions_per_ship_type(ship_type, page, limit):
     
     return {
         'metadata': {
+            'timestamp': current_datetime.strftime("%d-%m-%Y %H:%M:%S"),
+            'request_id': random_string(10),
             "total_results": total_results,
             "page": page,
             "per_page": limit,
@@ -308,6 +318,8 @@ def emissions_per_year(year, page, limit):
     
     return {
         'metadata': {
+            'timestamp': current_datetime.strftime("%d-%m-%Y %H:%M:%S"),
+            'request_id': random_string(10),
             "total_results": total_results,
             "page": page,
             "per_page": limit,
