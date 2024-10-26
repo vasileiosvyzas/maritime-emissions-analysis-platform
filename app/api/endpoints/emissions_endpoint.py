@@ -5,6 +5,9 @@ import os
 import math
 import random, string
 from datetime import datetime
+from typing import Dict, Optional, TypedDict
+from dataclasses import dataclass
+from decimal import Decimal
 
 # Initialize the Athena client
 athena_client = boto3.client("athena")
@@ -137,17 +140,20 @@ def emissions_data_without_conditions(page, limit):
     }
     
 def emissions_per_ship_id(ship_id):
+    print('in am in func the parameters are ship id')
+
     condition = f"""
         WHERE imo_number = {ship_id}
-        ORDER BY reporting_period
+        ORDER BY reporting_period DESC;
     """
     query = joined_table + base_query + condition
+
     response = execute_athena_query(query=query)
     
     statement = f"""
         SELECT COUNT(*) AS total_results
         FROM latest_data
-        WHERE imo_number = {ship_id}
+        WHERE imo_number = {ship_id};
     """
     
     query = joined_table + statement
@@ -155,6 +161,8 @@ def emissions_per_ship_id(ship_id):
     total_results_value = execute_athena_query(query=query)
     total_results = int(total_results_value[0]['total_results'])
     
+    print(total_results)
+
     return {
         'metadata': {
             "total_results": total_results,
@@ -163,15 +171,18 @@ def emissions_per_ship_id(ship_id):
     }
 
 def emissions_per_ship_type_and_year(ship_type, year, page, limit):
+    print('Our parameters are ship_type and year')
     offset = (page - 1) * limit
     
     condition_query = f"""
-        WHERE WHERE ship_type = {ship_type} AND reporting_period={year};
+        WHERE ship_type = '{ship_type}' AND reporting_period={year}
         ORDER BY imo_number, reporting_period DESC
         OFFSET {offset}
-        LIMIT {limit}
+        LIMIT {limit};
     """
     
+    print(condition_query)
+
     query = joined_table + base_query + condition_query
     data_response = execute_athena_query(query=query)
     print(data_response)
@@ -179,7 +190,7 @@ def emissions_per_ship_type_and_year(ship_type, year, page, limit):
     statement = f"""
         SELECT COUNT(*) AS total_results
         FROM latest_data
-        WHERE WHERE ship_type = {ship_type} AND reporting_period={year};
+        WHERE ship_type = '{ship_type}' AND reporting_period={year};
     """
     
     query = joined_table + statement
@@ -191,6 +202,53 @@ def emissions_per_ship_type_and_year(ship_type, year, page, limit):
 
     print(total_results)
     print(total_pages)
+    
+    if page < total_pages:
+        next_page_url = f"{API_URL}/emissions?ship_type={ship_type}&year={year}&page={page + 1}&limit=10"
+    else:
+        next_page_url = 'null'
+        
+    if page > 1:
+        prev_page_url = f"{API_URL}/emissions?ship_type={ship_type}&year={year}&page={page - 1}&limit=10"
+    else:
+        prev_page_url = 'null'
+    
+    return {
+        'metadata': {
+            "total_results": total_results,
+            "page": page,
+            "per_page": limit,
+            "total_pages": total_pages,
+            "next_page_url": next_page_url,
+            "prev_page_url": prev_page_url
+        },
+        'results': data_response
+    }
+
+def emissions_per_ship_type(ship_type, page, limit):
+    offset = (page - 1) * limit
+    
+    condition_query = f"""
+        WHERE ship_type = '{ship_type}'
+        ORDER BY imo_number, reporting_period DESC
+        OFFSET {offset}
+        LIMIT {limit};
+    """
+    
+    query = joined_table + base_query + condition_query
+    data_response = execute_athena_query(query=query)
+
+    statement = f"""
+        SELECT COUNT(*) AS total_results
+        FROM latest_data
+        WHERE ship_type = '{ship_type}';
+    """
+    
+    query = joined_table + statement
+
+    total_results_value = execute_athena_query(query=query)
+    total_results = int(total_results_value[0]['total_results'])
+    total_pages = math.ceil(total_results / page)
     
     if page < total_pages:
         next_page_url = f"{API_URL}/emissions?ship_type={ship_type}&page={page + 1}&limit=10"
@@ -213,64 +271,130 @@ def emissions_per_ship_type_and_year(ship_type, year, page, limit):
         },
         'results': data_response
     }
+    
+def emissions_per_year(year, page, limit):
+    offset = (page - 1) * limit
+    
+    condition_query = f"""
+        WHERE reporting_period = {year}
+        ORDER BY imo_number, reporting_period DESC
+        OFFSET {offset}
+        LIMIT {limit};
+    """
+    query = joined_table + base_query + condition_query
+    data_response = execute_athena_query(query=query)
 
+    statement = f"""
+        SELECT COUNT(*) AS total_results
+        FROM latest_data
+        WHERE reporting_period = {year};
+    """
+    
+    query = joined_table + statement
+
+    total_results_value = execute_athena_query(query=query)
+    total_results = int(total_results_value[0]['total_results'])
+    total_pages = math.ceil(total_results / page)
+    
+    if page < total_pages:
+        next_page_url = f"{API_URL}/emissions?year={year}&page={page + 1}&limit=10"
+    else:
+        next_page_url = 'null'
+        
+    if page > 1:
+        prev_page_url = f"{API_URL}/emissions?year={year}&page={page - 1}&limit=10"
+    else:
+        prev_page_url = 'null'
+    
+    return {
+        'metadata': {
+            "total_results": total_results,
+            "page": page,
+            "per_page": limit,
+            "total_pages": total_pages,
+            "next_page_url": next_page_url,
+            "prev_page_url": prev_page_url
+        },
+        'results': data_response
+    }
+
+@dataclass
+class QueryParams:
+    limit: int = 10  # Default limit
+    page: int = 1    # Default page
+    ship_id: Optional[str] = None
+    ship_type: Optional[str] = None
+    year: Optional[int] = None
+
+def parse_query_parameters(event: Dict) -> QueryParams:
+    """
+    Parse and validate query parameters from API Gateway event.
+    Returns a QueryParams object with all parameters (using defaults where not provided).
+    """
+    # Get query parameters from event, defaulting to empty dict if None
+    query_params = event.get('queryStringParameters', {}) or {}
+    
+    # Parse and validate parameters with type conversion
+    try:
+        params = QueryParams(
+            limit=int(query_params.get('limit', 10)),
+            page=int(query_params.get('page', 1)),
+            ship_id=query_params.get('ship_id'),
+            ship_type=query_params.get('ship_type'),
+            year=int(query_params.get('year')) if query_params.get('year') else None
+        )
+        
+        # Validate limit and page
+        if params.limit < 1 or params.limit > 100:
+            raise ValueError("Limit must be between 1 and 100")
+        if params.page < 1:
+            raise ValueError("Page must be greater than 0")
+            
+        return params
+        
+    except ValueError as e:
+        raise ValueError(f"Invalid parameter value: {str(e)}")
+
+def determine_query_type(params: QueryParams) -> str:
+    """
+    Determine which type of query to execute based on provided parameters.
+    Returns a string identifier for the query type.
+    """
+    if params.ship_id:
+        return emissions_per_ship_id(ship_id=params.ship_id)
+    elif params.ship_type and params.year:
+        return emissions_per_ship_type_and_year(ship_type=params.ship_type, year=params.year, page=params.page, limit=params.limit)
+    elif params.ship_type:
+        return emissions_per_ship_type(ship_type=params.ship_type, page=params.page, limit=params.limit)
+    elif params.year:
+        return emissions_per_year(year=params.year, page=params.page, limit=params.limit)
+    else:
+        return emissions_data_without_conditions(page=params.page, limit=params.limit)
+
+# Example usage in Lambda handler
 def lambda_handler(event, context):
     print(event)
-    # ship_type = event["queryStringParameters"]["ship_type"]
-    
-    # year = event["queryStringParameters"]["year"]
-    
-    # offset = (page - 1) * limit
+    try:
+        params = parse_query_parameters(event)
+        print(params)
 
-    if event["queryStringParameters"] == None:
-        # default values for page and limit if they are missing
-        page = 1
-        limit = 10
+        print(type(params.year))
+        print(params.year)
+        query_response = determine_query_type(params)
         
-        response = emissions_data_without_conditions(page=page, limit=limit)
-    
         return {
             "statusCode": 200,
             "headers": {"Content-Type": "application/json"},
-            "body": json.dumps(response),
+            "body": json.dumps(query_response),
+        }  
+        
+    except ValueError as e:
+        return {
+            "statusCode": 400,
+            "body": {"error": str(e)}
         }
-        
-    if 'page' in event["queryStringParameters"]:
-        page = int(event["queryStringParameters"]["page"])
-        limit = int(event["queryStringParameters"]["limit"])
-        
-        response = emissions_data_without_conditions(page=page, limit=limit)
-    
+    except Exception as e:
         return {
-            "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps(response),
+            "statusCode": 500,
+            "body": {"error": "Internal server error"}
         }
-    
-    
-    if 'ship_id' in event['queryStringParameters']:
-        ship_id = event["queryStringParameters"]["ship_id"]
-        
-        response = emissions_per_ship_id(ship_id=ship_id)
-        
-        return {
-            "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps(response),
-        }    
-    
-    if 'page' in event["queryStringParameters"] and 'ship_type' in event["queryStringParameters"] and 'limit' in event["queryStringParameters"] and 'year' in event["queryStringParameters"]:
-        ship_type = event["queryStringParameters"]["ship_type"]
-        page = int(event["queryStringParameters"]["page"])
-        limit = int(event["queryStringParameters"]["limit"])
-        year = int(event["queryStringParameters"]["year"])
-
-        response = emissions_per_ship_type_and_year(ship_type=ship_type, year=year, page=page, limit=limit)
-
-        return {
-            "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps(response),
-        }
-
-    
