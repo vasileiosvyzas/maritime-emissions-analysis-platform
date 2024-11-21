@@ -1,0 +1,15 @@
+client_secret_110023633913-eduveq5mb4slqd1988lfpcbk46upe6i0.apps.googleusercontent.com.json
+
+### react ###
+.DS_*
+*.log
+logs
+**/*.backup.*
+**/*.back.*
+
+node_modules
+bower_components
+
+.env
+.env.local
+.env.*.local
