@@ -1,7 +1,6 @@
 import React from 'react';
 import LandingPage from './LandingPage';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import SignInModal from './SignInModal';
 import DashboardHome from './DashboardHome';
 
 function App() {

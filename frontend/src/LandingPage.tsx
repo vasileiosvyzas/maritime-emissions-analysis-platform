@@ -1,6 +1,5 @@
 import React from 'react';
 import { useState } from 'react';
-import { Layout } from 'lucide-react';
 import { BarChart, LineChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import SignInModal from './SignInModal';
 import icon from './icon_for_the_name_shipcarbontracker_blue (1).png';
