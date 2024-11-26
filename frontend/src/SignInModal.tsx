@@ -32,6 +32,42 @@ const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const handleGoogleCredentialResponse = (response: any) => {
+      try {
+        const { credential } = response;
+  
+        // Store the token locally
+        localStorage.setItem('googleToken', credential);
+  
+        // Close the modal upon successful login
+        onClose();
+        navigate('/dashboard-home');
+      } catch (error) {
+        setError('Failed to sign in with Google');
+      }
+    };
+    
+    const initializeGoogleSignIn = () => {
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.initialize({
+          client_id: googleConfig.clientId,
+          callback: handleGoogleCredentialResponse,
+        });
+  
+        // Render the Google Sign In button
+        const buttonContainer = document.getElementById('googleSignInDiv');
+        if (buttonContainer) {
+          window.google.accounts.id.renderButton(buttonContainer, {
+            type: 'standard',
+            theme: 'outline',
+            size: 'large',
+            text: 'continue_with',
+            width: '100%',
+          });
+        }
+      }
+    };
+
     // Load the Google Identity Services SDK
     const loadGoogleScript = () => {
       const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
@@ -50,43 +86,7 @@ const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => {
     if (isOpen) {
       loadGoogleScript();
     }
-  }, [isOpen]);
-
-  const initializeGoogleSignIn = () => {
-    if (window.google?.accounts?.id) {
-      window.google.accounts.id.initialize({
-        client_id: googleConfig.clientId,
-        callback: handleGoogleCredentialResponse,
-      });
-
-      // Render the Google Sign In button
-      const buttonContainer = document.getElementById('googleSignInDiv');
-      if (buttonContainer) {
-        window.google.accounts.id.renderButton(buttonContainer, {
-          type: 'standard',
-          theme: 'outline',
-          size: 'large',
-          text: 'continue_with',
-          width: '100%',
-        });
-      }
-    }
-  };
-
-  const handleGoogleCredentialResponse = (response: any) => {
-    try {
-      const { credential } = response;
-
-      // Store the token locally
-      localStorage.setItem('googleToken', credential);
-
-      // Close the modal upon successful login
-      onClose();
-      navigate('/dashboard-home');
-    } catch (error) {
-      setError('Failed to sign in with Google');
-    }
-  };
+  }, [isOpen, navigate, onClose]);
 
   if (!isOpen) return null;
 
