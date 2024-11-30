@@ -3,7 +3,7 @@ import React from 'react';
 const DashboardHome = () => {
   const handleRequestApiAccess = () => {
     // Navigate to API request page or open a modal for requesting access
-    window.location.href = '/request-api';
+    window.location.href = '/request_form';
   };
 
   const handleReadDocumentation = () => {
