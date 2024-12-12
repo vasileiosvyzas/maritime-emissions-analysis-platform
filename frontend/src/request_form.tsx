@@ -20,7 +20,7 @@ const APIAccessRequest: React.FC<APIAccessRequestProps> = ({userEmail: initialEm
     e.preventDefault();
     
     try {
-      const response = await fetch('/api/request-api-key', {
+      const response = await fetch('https://oks4j2hbljvcymwdlowkwvosle0ogjpc.lambda-url.us-east-1.on.aws/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

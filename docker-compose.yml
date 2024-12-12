@@ -1,5 +1,5 @@
-include:
-    - ./superset/docker-compose-image-tag.yml # loads the superset dashboard app
+# include:
+#     - ./superset/docker-compose-image-tag.yml # loads the superset dashboard app
 
 services:
   nginx:
