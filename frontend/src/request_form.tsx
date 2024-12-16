@@ -18,9 +18,14 @@ const APIAccessRequest: React.FC<APIAccessRequestProps> = ({userEmail: initialEm
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+  
     try {
-      const response = await fetch('https://oks4j2hbljvcymwdlowkwvosle0ogjpc.lambda-url.us-east-1.on.aws/', {
+      const lambdaUrl = process.env.REACT_APP_LAMBDA_URL;
+        if (!lambdaUrl) {
+            throw new Error('LAMBDA_URL environment variable is not defined');
+        }
+
+      const response = await fetch(lambdaUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -30,12 +35,23 @@ const APIAccessRequest: React.FC<APIAccessRequestProps> = ({userEmail: initialEm
           purpose: purpose
         })
       });
-
+  
+      // Log full response details
+      console.log('Response status:', response.status);
+      const responseText = await response.text();
+      console.log('Response body:', responseText);
+  
       if (response.ok) {
         setSubmitted(true);
+      } else {
+        console.error('Request failed with status:', response.status);
+        // Optionally, add error handling or user feedback
+        alert(`Request failed: ${responseText}`);
       }
     } catch (error) {
       console.error('API key request failed', error);
+      // Provide user feedback about the error
+      alert('Failed to submit API access request. Please try again.');
     }
   };
 
