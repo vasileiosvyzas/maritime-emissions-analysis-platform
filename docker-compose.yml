@@ -9,9 +9,8 @@ services:
       - "443:443"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
-      # - ./frontend/build:/usr/share/nginx/html
-      # - ./certbot/conf:/etc/letsencrypt
-      # - ./certbot/www:/var/www/certbot
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/lib/letsencrypt:/var/lib/letsencrypt
     depends_on:
       - frontend
     networks:
@@ -21,7 +20,8 @@ services:
     build: 
       context: ./frontend
       dockerfile: Dockerfile
-    # environment:
+    environment:
+      - HOST=0.0.0.0
     #   - API_URL=https://api.domain.com
     #   - DASHBOARD_URL=https://dashboard.domain.com
     # volumes:
@@ -31,4 +31,4 @@ services:
 
 networks:
   app-network:
-    driver: bridge
+    external: true
