@@ -87,9 +87,9 @@ const LandingPage = () => {
             <p className="text-xl mb-8">
               Comprehensive insights for maritime emissions monitoring and optimization
             </p>
-            <button className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100">
+    {/*<button className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100">
               Request API Access
-            </button>
+            </button>*/}
           </div>
         </div>
       </div>
@@ -169,9 +169,9 @@ const LandingPage = () => {
           <p className="text-xl mb-8">
             Sign up now to access our API and start analyzing maritime emissions data.
           </p>
-          <button className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100">
+	    {/*<button className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100">
             Create Account
-          </button>
+          </button>*/}
         </div>
       </div>
 

@@ -1,19 +1,19 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "me-ap.com",
+  "name": "Environmental data analytics for the maritime transport industry.",
   "icons": [
     {
-      "src": "favicon.ico",
+      "src": "icon_for_the_name_shipcarbontracker_blue (1).png",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
     },
     {
-      "src": "logo192.png",
+      "src": "icon_for_the_name_shipcarbontracker_blue (1).png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "logo512.png",
+      "src": "icon_for_the_name_shipcarbontracker_blue (1).png",
       "type": "image/png",
       "sizes": "512x512"
     }

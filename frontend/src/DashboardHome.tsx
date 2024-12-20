@@ -13,7 +13,7 @@ const DashboardHome = () => {
 
   const handleOpenDashboard = () => {
     // Redirect to an external or internal dashboard URL
-    window.location.href = 'http://localhost:8088/superset/dashboard/p/XRGL1P2kjmJ/';
+    window.location.href = 'http://dashboard.me-ap.com/superset/dashboard/p/wG5Bj04jrKy/';
   };
 
   return (
