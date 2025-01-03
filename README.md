@@ -126,3 +126,6 @@ project/
 
 ## License
 [Add license information here]
+
+## Contact
+For any inquiries please email at shipcarbontracker@gmail.com
