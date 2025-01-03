@@ -125,7 +125,7 @@ project/
 - [ ] Create automated data backup system
 
 ## License
-[Add license information here]
+This project is licensed under the terms of the MIT license.
 
 ## Contact
 For any inquiries please email at shipcarbontracker@gmail.com
