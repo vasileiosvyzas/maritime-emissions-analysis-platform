@@ -1,4 +1,5 @@
-![alt text](frontend/public/icon_for_the_name_shipcarbontracker_blue%20(1).png "Maritime Emissions Analysis Platform")
+<img src="frontend/public/icon_for_the_name_shipcarbontracker_blue%20(1).png" width="200" height="200">
+
 
 # Maritime Emissions Analysis Platform
 A full-stack data analytics platform built on AWS, featuring automated data pipelines, interactive dashboards, and API integration, all orchestrated with Docker containers.
