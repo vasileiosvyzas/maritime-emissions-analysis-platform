@@ -121,7 +121,7 @@ def generate_synthetic_data(df):
     
     return synthetic_data
 
-def main():
+def extract_data_from_sources():
     file_names = ["wikipedia_ship_data_v2", "pleiades_fleet_v2"]
     dataframes = []
 
@@ -135,6 +135,9 @@ def main():
     df = pd.concat(dataframes, ignore_index=True)
     df.to_csv('../../data/processed/ship_specs_sample.csv', index=False)
     
+    return df
+
+def main():
     # after some manual processing
     full_data = pd.read_csv('ship_specs_full.csv')
     full_data = fix_column_values_and_types(full_data)
