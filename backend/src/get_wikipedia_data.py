@@ -5,7 +5,7 @@ import time
 from bs4 import BeautifulSoup
 from difflib import SequenceMatcher
 from dotenv import load_dotenv
-from src.utils.data import fetch_ship_ids
+from utils.data.fetch_ship_ids import fetch_ship_ids
 
 load_dotenv()
 
@@ -39,7 +39,10 @@ def get_info_box_from_article(html_page):
 def main():
     ships_not_found = []
     ship_info_json = {}
+    print('Getting the unique ship IDs')
     distinct_imo_numbers = fetch_ship_ids()
+    
+    print(distinct_imo_numbers.head())
     
     for index, row in distinct_imo_numbers[['imo_number', 'name']].iterrows():
         print(index, ' ', row['imo_number'], ' ',row['name'])
