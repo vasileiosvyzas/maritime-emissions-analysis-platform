@@ -35,8 +35,8 @@ def test_reports_have_new_versions():
     
     new_versions_df = check_for_new_report_versions(current_df=sample_current_df, new_df=sample_new_df)
     assert new_versions_df.iloc[0]['Reporting Period'] == 2023
-    assert new_versions_df.iloc[0]['Version_new'] == 33
-    assert new_versions_df.iloc[1]['Version_new'] == 229
+    assert new_versions_df.iloc[0]['Version'] == 33
+    assert new_versions_df.iloc[1]['Version'] == 229
     
 def test_report_version_with_new_year():
     """Tests the check_for_new_report_versions() function if it returns the 
@@ -62,10 +62,10 @@ def test_report_version_with_new_year():
     
     new_versions_df = check_for_new_report_versions(current_df=sample_current_df, new_df=sample_new_df)
     assert new_versions_df.iloc[0]['Reporting Period'] == 2024
-    assert new_versions_df.iloc[0]['Version_new'] == 2
+    assert new_versions_df.iloc[0]['Version'] == 2
     
     assert new_versions_df.iloc[1]['Reporting Period'] == 2023
-    assert new_versions_df.iloc[1]['Version_new'] == 33
+    assert new_versions_df.iloc[1]['Version'] == 33
 
 
 def test_no_changes_to_report_version():
@@ -91,4 +91,4 @@ def test_no_changes_to_report_version():
     )
     
     new_versions_df = check_for_new_report_versions(current_df=sample_current_df, new_df=sample_new_df)
-    assert new_versions_df == create_test_df(periods=[], versions=[], dates=[], files=[])
+    assert new_versions_df.empty == True

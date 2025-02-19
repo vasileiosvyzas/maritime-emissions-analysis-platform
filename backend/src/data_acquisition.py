@@ -135,10 +135,10 @@ def check_for_new_report_versions(current_df, new_df):
     merged_df = pd.merge(
         current_df, new_df, on="Reporting Period", how="right", suffixes=("_current", "_new")
     ).fillna(0)
-    new_versions = merged_df[merged_df["Version_new"] > merged_df["Version_current"]]
+    new_versions = merged_df[merged_df["Version_new"] > merged_df["Version_current"]]['Reporting Period']
     logger.info(new_versions)
     
-    return new_versions
+    return new_df[new_df['Reporting Period'].isin(new_versions)]
     
 
 def delete_file_from_local_directory(filepath):
@@ -251,7 +251,7 @@ def main():
     download_directory = "/tmp"
     
     if not df_with_new_versions.empty:
-        new_files = df_with_new_versions['File_new'].to_list()
+        new_files = df_with_new_versions['File'].to_list()
         logger.info(f"Found {len(new_files)} new files that need to be downloaded")
         
         for new_file_name in new_files:
@@ -278,8 +278,8 @@ def main():
 
             delete_file_from_local_directory(filepath=filepath)
     
-    reports_df_updated = df_with_new_versions[['Reporting Period', 'Version_new', 'Generation Date_new', 'File_new']].copy()
-    reports_df_updated.rename(columns={'Version_new': 'Version', 'Generation Date_new': 'Generation Date', 'File_new': 'File'}, inplace=True)
+    reports_df_updated = df_with_new_versions[['Reporting Period', 'Version', 'Generation Date', 'File']].copy()
+    # reports_df_updated.rename(columns={'Version_new': 'Version', 'Generation Date_new': 'Generation Date', 'File_new': 'File'}, inplace=True)
     logger.info('Updated the current df')
     
     # reports_df_updated.to_csv("reports_metadata.csv", index=False)
