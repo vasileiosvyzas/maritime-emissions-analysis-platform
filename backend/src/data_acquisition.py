@@ -177,7 +177,9 @@ def upload_file(file_name, bucket, object_name=None):
 
     s3_client = boto3.client(
         "s3", 
-        region_name="us-east-1"
+        aws_access_key_id=os.environ['AWS_ACCESS_KEY'], 
+        aws_secret_access_key=os.environ['AWS_SECRET_KEY'], 
+        region_name=os.environ['REGION_NAME']
     )
 
     try:
@@ -203,7 +205,9 @@ def change_format_and_upload_to_interim_bucket(filepath ,bucket_name, s3_file_na
     
     s3_client = boto3.client(
         "s3", 
-        region_name="us-east-1"
+        aws_access_key_id=os.environ['AWS_ACCESS_KEY'], 
+        aws_secret_access_key=os.environ['AWS_SECRET_KEY'], 
+        region_name=os.environ['REGION_NAME']
     )
     
     try:
@@ -232,7 +236,9 @@ def main():
     
     s3 = boto3.client(
         's3', 
-        region_name="us-east-1"
+        aws_access_key_id=os.environ['AWS_ACCESS_KEY'], 
+        aws_secret_access_key=os.environ['AWS_SECRET_KEY'], 
+        region_name=os.environ['REGION_NAME']
     )
     
     s3.download_file(
