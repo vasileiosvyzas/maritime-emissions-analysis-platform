@@ -17,12 +17,13 @@ from dotenv import load_dotenv
 
 load_dotenv()  # take environment variables
 
-logger = logging.getLogger('mylogger')
+logger = logging.getLogger("mylogger")
 
-logger.setLevel(logging.DEBUG) # set logger level
-logFormatter = logging.Formatter\
-("%(name)-12s %(asctime)s %(levelname)-8s %(filename)s:%(funcName)s %(message)s")
-consoleHandler = logging.StreamHandler(stdout) #set streamhandler to stdout
+logger.setLevel(logging.DEBUG)  # set logger level
+logFormatter = logging.Formatter(
+    "%(name)-12s %(asctime)s %(levelname)-8s %(filename)s:%(funcName)s %(message)s"
+)
+consoleHandler = logging.StreamHandler(stdout)  # set streamhandler to stdout
 consoleHandler.setFormatter(logFormatter)
 logger.addHandler(consoleHandler)
 
@@ -57,7 +58,9 @@ def get_reporting_table_content():
         time.sleep(30)
 
         table_element = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, '//*[@id="gridview-1152"]/div[2]'))
+            EC.presence_of_element_located(
+                (By.XPATH, '//*[@id="gridview-1152"]/div[2]')
+            )
         )
         table_rows = table_element.find_elements(By.TAG_NAME, "tr")
         table_data = []
@@ -67,12 +70,12 @@ def get_reporting_table_content():
             for cell in cells:
                 row_data.append(cell.text)
             table_data.append(row_data)
-        
+
         logger.info("Got the table data extract")
         logger.info(table_data)
         result = []
-        
-        logger.info('Converting the data to a dataframe')
+
+        logger.info("Converting the data to a dataframe")
         for row in table_data:
             data = {}
             data["Reporting Period"] = row[1].split("Reporting Period")[1]
@@ -82,7 +85,7 @@ def get_reporting_table_content():
             result.append(data)
         new_report_table_data_df = pd.DataFrame(result)
 
-        logger.info('Got the new dataframe')
+        logger.info("Got the new dataframe")
         logger.info(new_report_table_data_df.head())
 
         return new_report_table_data_df
@@ -123,7 +126,7 @@ def download_new_file(report):
 
 
 def check_for_new_report_versions(current_df, new_df):
-    """Takes the dataframe with the table data extracted at current run and the dataframe with the table data 
+    """Takes the dataframe with the table data extracted at current run and the dataframe with the table data
     from the previous run and compares them to check for new versions of the report
 
     Args:
@@ -133,13 +136,19 @@ def check_for_new_report_versions(current_df, new_df):
     logger.info("Comparing the versions in the current and new dataframes")
 
     merged_df = pd.merge(
-        current_df, new_df, on="Reporting Period", how="right", suffixes=("_current", "_new")
+        current_df,
+        new_df,
+        on="Reporting Period",
+        how="right",
+        suffixes=("_current", "_new"),
     ).fillna(0)
-    new_versions = merged_df[merged_df["Version_new"] > merged_df["Version_current"]]['Reporting Period']
+    new_versions = merged_df[merged_df["Version_new"] > merged_df["Version_current"]][
+        "Reporting Period"
+    ]
     logger.info(new_versions)
-    
-    return new_df[new_df['Reporting Period'].isin(new_versions)]
-    
+
+    return new_df[new_df["Reporting Period"].isin(new_versions)]
+
 
 def delete_file_from_local_directory(filepath):
     if os.path.exists(filepath):
@@ -170,7 +179,7 @@ def upload_file(file_name, bucket, object_name=None):
     """
 
     logger.info("Starting the upload to S3")
-    
+
     # If S3 object_name was not specified, use file_name
     if object_name is None:
         object_name = os.path.basename(file_name)
@@ -193,12 +202,13 @@ def upload_file(file_name, bucket, object_name=None):
         return False
     return True
 
-def change_format_and_upload_to_interim_bucket(filepath ,bucket_name, s3_file_name):
-    logger.info('Change the file to CSV and upload it to S3')
-    
-    df_raw = pd.read_excel(filepath, engine='openpyxl', header=2)
-    df_raw.drop(['Verifier Address'], axis=1, inplace=True)
-    
+
+def change_format_and_upload_to_interim_bucket(filepath, bucket_name, s3_file_name):
+    logger.info("Change the file to CSV and upload it to S3")
+
+    df_raw = pd.read_excel(filepath, engine="openpyxl", header=2)
+    df_raw.drop(["Verifier Address"], axis=1, inplace=True)
+
     logger.info(f"File size: {df_raw.shape}")
     logger.info(f"Header")
     logger.info(df_raw.head())
@@ -217,13 +227,12 @@ def change_format_and_upload_to_interim_bucket(filepath ,bucket_name, s3_file_na
 
         # Upload the CSV to S3
         s3_client.put_object(
-            Bucket=bucket_name,
-            Key=s3_file_name,
-            Body=csv_buffer.getvalue()
+            Bucket=bucket_name, Key=s3_file_name, Body=csv_buffer.getvalue()
         )
-        
+
     except ClientError as e:
         logger.error(e)
+
 
 def main():
     logger.info("Getting the new metadata from the reports table")
@@ -242,62 +251,66 @@ def main():
     )
     
     s3.download_file(
-        os.environ['BUCKET_NAME'],
-        "raw/reports_metadata.csv",
-        'reports_metadata.csv')
+        os.environ["BUCKET_NAME"], "raw/reports_metadata.csv", "reports_metadata.csv"
+    )
 
     reports_df_old = pd.read_csv("reports_metadata.csv")
 
     logger.info("Report versions from previous run")
     logger.info(reports_df_old.head())
-    
-    logger.info('Check for new versions of the reports')
-    df_with_new_versions = check_for_new_report_versions(current_df=reports_df_old, new_df=reports_df_new)
+
+    logger.info("Check for new versions of the reports")
+    df_with_new_versions = check_for_new_report_versions(
+        current_df=reports_df_old, new_df=reports_df_new
+    )
 
     download_directory = "/tmp"
-    
+
     if not df_with_new_versions.empty:
-        new_files = df_with_new_versions['File'].to_list()
+        new_files = df_with_new_versions["File"].to_list()
         logger.info(f"Found {len(new_files)} new files that need to be downloaded")
-        
+
         for new_file_name in new_files:
             logger.info(f"Processing file {new_file_name}")
-            
+
             new_file_name = new_file_name.strip()
             download_new_file(report=new_file_name)
-            
+
             filepath = f"{download_directory}/{new_file_name}.xlsx"
-            year = new_file_name.split('-')[0]
+            year = new_file_name.split("-")[0]
             filename = f"{new_file_name}.xlsx"
-            
+
             upload_file(
                 file_name=filepath,
-                bucket=os.environ['BUCKET_NAME'],
+                bucket=os.environ["BUCKET_NAME"],
                 object_name=f"raw/{year}/{filename}",
             )
-            
+
             csv_file_name = f"{new_file_name}.csv"
             change_format_and_upload_to_interim_bucket(
-                filepath=filepath, 
-                bucket_name=os.environ['BUCKET_NAME'], 
-                s3_file_name=f"interim/reporting_period={year}/{csv_file_name}")
+                filepath=filepath,
+                bucket_name=os.environ["BUCKET_NAME"],
+                s3_file_name=f"interim/reporting_period={year}/{csv_file_name}",
+            )
 
             delete_file_from_local_directory(filepath=filepath)
-    
-    reports_df_updated = df_with_new_versions[['Reporting Period', 'Version', 'Generation Date', 'File']].copy()
+
+    reports_df_updated = df_with_new_versions[
+        ["Reporting Period", "Version", "Generation Date", "File"]
+    ].copy()
     # reports_df_updated.rename(columns={'Version_new': 'Version', 'Generation Date_new': 'Generation Date', 'File_new': 'File'}, inplace=True)
-    logger.info('Updated the current df')
-    
+    logger.info("Updated the current df")
+
     # reports_df_updated.to_csv("reports_metadata.csv", index=False)
-    
+
     csv_buffer = StringIO()
     reports_df_updated.to_csv(csv_buffer, index=False)
 
     # Upload the CSV to S3
     s3.put_object(
-        Bucket=os.environ['BUCKET_NAME'],
+        Bucket=os.environ["BUCKET_NAME"],
         Key=f"raw/reports_metadata.csv",
-        Body=csv_buffer.getvalue()
+        Body=csv_buffer.getvalue(),
     )
 
 

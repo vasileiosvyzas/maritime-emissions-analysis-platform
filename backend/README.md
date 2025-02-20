@@ -4,8 +4,14 @@ Get the emissions reports for maritime transport, do ETL, store the data in the 
 # Data Acquisition
 A scrapper uses Selenium to get the reports from the following website https://mrv.emsa.europa.eu/#public/emission-report
 
-## How to run the data acquisition script
-Firstly, create a .env file with the correct values for the bucket name, AWS region, and AWS credentials. Then just run ```docker compose up -d```
+# Development
+## Formatting
+You can run ruff to format the codebase after python requirements have be installed:
+
+```
+ruff format
+```
+
 
 # Create a systemd service to run docker compose on startup
 Create a new systemd service file, e.g., docker-compose.service, in the /etc/systemd/system/ directory. You can use a text editor like nano or vim to create the file:
