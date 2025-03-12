@@ -26,6 +26,9 @@ services:
       - type: volume
         source: data-volume
         target: /tmp
+      - $HOME/.config/gcloud/application_default_credentials.json:/root/.config/gcloud/application_default_credentials.json
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
     restart: "no"
 
 volumes:
