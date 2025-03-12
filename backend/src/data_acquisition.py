@@ -6,7 +6,7 @@ import boto3
 
 import pandas as pd
 
-from io import StringIO
+from io import StringIO, BytesIO
 from sys import stdout
 from botocore.exceptions import ClientError
 from selenium import webdriver
@@ -14,6 +14,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from dotenv import load_dotenv
+from google.cloud import storage
+
 
 load_dotenv()  # take environment variables
 
@@ -202,6 +204,16 @@ def upload_file(file_name, bucket, object_name=None):
         return False
     return True
 
+def upload_file_to_gcs(client, bucket_name, source_file_name, destination_blob_name):
+    """Upload a file to GCS."""
+    
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+    blob.upload_from_filename(source_file_name)
+    logger.info(f"Uploaded {source_file_name} to gs://{bucket_name}/{destination_blob_name}")
+    
+    return True
+
 
 def change_format_and_upload_to_interim_bucket(filepath, bucket_name, s3_file_name):
     logger.info("Change the file to CSV and upload it to S3")
@@ -233,6 +245,17 @@ def change_format_and_upload_to_interim_bucket(filepath, bucket_name, s3_file_na
     except ClientError as e:
         logger.error(e)
 
+def stream_and_upload_to_gcs(client, bucket_name, dataframe, destination_blob_name):
+    """Stream a DataFrame to GCS as a CSV."""
+    
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+    
+    csv_buffer = StringIO()
+    dataframe.to_csv(csv_buffer, index=False)
+    blob.upload_from_string(csv_buffer.getvalue(), content_type='text/csv')
+    
+    logger.info(f"Streamed DataFrame to gs://{bucket_name}/{destination_blob_name}")
 
 def main():
     logger.info("Getting the new metadata from the reports table")
@@ -243,21 +266,41 @@ def main():
     logger.info(reports_df_new.head())
     logger.info(reports_df_new.dtypes)
     
-    s3 = boto3.client(
-        's3', 
-        aws_access_key_id=os.environ['AWS_ACCESS_KEY'], 
-        aws_secret_access_key=os.environ['AWS_SECRET_KEY'], 
-        region_name=os.environ['REGION_NAME']
-    )
+    # s3 = boto3.client(
+    #     's3', 
+    #     aws_access_key_id=os.environ['AWS_ACCESS_KEY'], 
+    #     aws_secret_access_key=os.environ['AWS_SECRET_KEY'], 
+    #     region_name=os.environ['REGION_NAME']
+    # )
     
-    s3.download_file(
-        os.environ["BUCKET_NAME"], "raw/reports_metadata.csv", "reports_metadata.csv"
-    )
+    # s3.download_file(
+    #     os.environ["BUCKET_NAME"], "raw/reports_metadata.csv", "reports_metadata.csv"
+    # )
+    
+    # reports_df_old = pd.read_csv("reports_metadata.csv")
 
-    reports_df_old = pd.read_csv("reports_metadata.csv")
+    try:
+        storage_client = storage.Client(project=os.environ['GCP_PROJECT_ID'])
+        bucket = storage_client.bucket(bucket_name=os.environ['BUCKET_NAME'])
+        source_blob_name = 'bronze-bucket/reports_metadata.csv'
+        
+        # Use BytesIO to capture the binary stream
+        file_obj = BytesIO()
 
-    logger.info("Report versions from previous run")
-    logger.info(reports_df_old.head())
+        blob = bucket.blob(source_blob_name)
+        blob.download_to_file(file_obj)
+        
+        # Seek to start of buffer and decode to text for Pandas
+        file_obj.seek(0)
+        
+        reports_df_old = pd.read_csv(StringIO(file_obj.read().decode('utf-8')))
+        
+        logger.info("Report versions from previous run")
+        logger.info(reports_df_old.head())
+    except Exception as e:
+        logger.error(f"Failed to fetch reports_metadata.csv from GCS: {e}")
+        logger.error(traceback.format_exc())
+        raise
 
     logger.info("Check for new versions of the reports")
     df_with_new_versions = check_for_new_report_versions(
@@ -280,37 +323,47 @@ def main():
             year = new_file_name.split("-")[0]
             filename = f"{new_file_name}.xlsx"
 
-            upload_file(
-                file_name=filepath,
-                bucket=os.environ["BUCKET_NAME"],
-                object_name=f"raw/{year}/{filename}",
+            # upload_file(
+            #     file_name=filepath,
+            #     bucket=os.environ["BUCKET_NAME"],
+            #     object_name=f"raw/{year}/{filename}",
+            # )
+            upload_file_to_gcs(
+                client=storage_client,
+                bucket_name=os.environ['BUCKET_NAME'],
+                source_file_name=filepath, 
+                destination_blob_name=f"bronze-bucket/{year}/{filename}"
             )
 
-            csv_file_name = f"{new_file_name}.csv"
-            change_format_and_upload_to_interim_bucket(
-                filepath=filepath,
-                bucket_name=os.environ["BUCKET_NAME"],
-                s3_file_name=f"interim/reporting_period={year}/{csv_file_name}",
-            )
+            # csv_file_name = f"{new_file_name}.csv"
+            # change_format_and_upload_to_interim_bucket(
+            #     filepath=filepath,
+            #     bucket_name=os.environ["BUCKET_NAME"],
+            #     s3_file_name=f"interim/reporting_period={year}/{csv_file_name}",
+            # )
 
             delete_file_from_local_directory(filepath=filepath)
 
-    reports_df_updated = df_with_new_versions[
-        ["Reporting Period", "Version", "Generation Date", "File"]
-    ].copy()
-    # reports_df_updated.rename(columns={'Version_new': 'Version', 'Generation Date_new': 'Generation Date', 'File_new': 'File'}, inplace=True)
+    reports_df_updated = df_with_new_versions[["Reporting Period", "Version", "Generation Date", "File"]].copy()
     logger.info("Updated the current df")
 
     # reports_df_updated.to_csv("reports_metadata.csv", index=False)
 
-    csv_buffer = StringIO()
-    reports_df_updated.to_csv(csv_buffer, index=False)
+    # csv_buffer = StringIO()
+    # reports_df_updated.to_csv(csv_buffer, index=False)
 
-    # Upload the CSV to S3
-    s3.put_object(
-        Bucket=os.environ["BUCKET_NAME"],
-        Key=f"raw/reports_metadata.csv",
-        Body=csv_buffer.getvalue(),
+    # # Upload the CSV to S3
+    # s3.put_object(
+    #     Bucket=os.environ["BUCKET_NAME"],
+    #     Key=f"raw/reports_metadata.csv",
+    #     Body=csv_buffer.getvalue(),
+    # )
+    
+    stream_and_upload_to_gcs(
+        client=storage_client,
+        bucket_name=os.environ['BUCKET_NAME'],
+        dataframe=reports_df_updated,
+        destination_blob_name='bronze-bucket/reports_metadata.csv'
     )
 
 
