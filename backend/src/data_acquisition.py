@@ -207,10 +207,14 @@ def upload_file(file_name, bucket, object_name=None):
 def upload_file_to_gcs(client, bucket_name, source_file_name, destination_blob_name):
     """Upload a file to GCS."""
     
-    bucket = client.bucket(bucket_name)
-    blob = bucket.blob(destination_blob_name)
-    blob.upload_from_filename(source_file_name)
-    logger.info(f"Uploaded {source_file_name} to gs://{bucket_name}/{destination_blob_name}")
+    try:
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(destination_blob_name)
+        blob.upload_from_filename(source_file_name)
+        logger.info(f"Uploaded {source_file_name} to gs://{bucket_name}/{destination_blob_name}")
+    except Exception as e:
+        logger.error(e)
+        logger.info(e.with_traceback)
     
     return True
 
@@ -248,14 +252,18 @@ def change_format_and_upload_to_interim_bucket(filepath, bucket_name, s3_file_na
 def stream_and_upload_to_gcs(client, bucket_name, dataframe, destination_blob_name):
     """Stream a DataFrame to GCS as a CSV."""
     
-    bucket = client.bucket(bucket_name)
-    blob = bucket.blob(destination_blob_name)
+    try:
     
-    csv_buffer = StringIO()
-    dataframe.to_csv(csv_buffer, index=False)
-    blob.upload_from_string(csv_buffer.getvalue(), content_type='text/csv')
-    
-    logger.info(f"Streamed DataFrame to gs://{bucket_name}/{destination_blob_name}")
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(destination_blob_name)
+        
+        csv_buffer = StringIO()
+        dataframe.to_csv(csv_buffer, index=False)
+        blob.upload_from_string(csv_buffer.getvalue(), content_type='text/csv')
+        
+        logger.info(f"Streamed DataFrame to gs://{bucket_name}/{destination_blob_name}")
+    except Exception as e:
+        logger.error(e)
 
 def main():
     logger.info("Getting the new metadata from the reports table")
