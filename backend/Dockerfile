@@ -8,6 +8,7 @@ RUN pip install --upgrade pip
 RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
 
 COPY ./src/data_acquisition.py /app/data_acquisition.py
+COPY ./src/google_cloud_storage_manager.py /app/google_cloud_storage_manager.py
 COPY .env /app/.env
 
 CMD ["python", "data_acquisition.py"]
