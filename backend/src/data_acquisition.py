@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+import datetime
 import traceback
 import boto3
 
@@ -237,6 +238,12 @@ def main():
                 source_file=filepath,
                 destination_blob_name=f"{year}/{filename}"
             )
+            
+            blob = cloud_storage.bucket.get_blob(f"{'bronze-bucket'}/{year}/{filename}")
+            metageneration_match_precondition = None
+            metadata = {'processed_by_ETL': False, 'ingestion_date':datetime.time}
+            meta = blob.metadata
+            meta.update()
 
             delete_file_from_local_directory(filepath=filepath)
 
