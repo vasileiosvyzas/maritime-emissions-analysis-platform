@@ -36,7 +36,7 @@ class ETLPipeline():
         return df_to_process
         
 
-    def tranform(self, emission_report: pd.DataFrame) -> pd.DataFrame:
+    def tranform(self, df: pd.DataFrame) -> pd.DataFrame:
         """Does all the transformations on the emission report to make it clean
 
         Args:
@@ -47,8 +47,46 @@ class ETLPipeline():
         """
         # remove useless columns (i.e. addressses)
         # concatenate columns
-        # denormalize dataset??
-        pass
+        
+        df.drop(["Verifier Address", 
+                 "d.1", 
+                 "additional information to facilitate the understanding of the reported average operational energy efficiency indicators"], 
+                axis=1, inplace=True)
+        
+        # Create the monitoring_methods column
+        def get_monitoring_methods(row):
+            methods = []
+            if row['A'] == 'Yes':
+                methods.append('A')
+            if row['B'] == 'Yes':
+                methods.append('B')
+            if row['C'] == 'Yes':
+                methods.append('C')
+            if row['D'] == 'Yes':
+                methods.append('D')
+            if row['D.1'] == 'Yes':
+                methods.append('D.1')
+            return ', '.join(methods) if methods else ''
+
+        df['monitoring_methods'] = df.apply(get_monitoring_methods, axis=1)
+        df.drop(['A', 'B', 'C', 'D', 'D.1'], axis=1, inplace=True)
+        
+        df = df.replace(to_replace="Division by zero!", value=np.nan).infer_objects(copy=False)
+        
+        df['DoC issue date'] = df['DoC issue date'].replace('DoC not issued', np.nan).infer_objects(copy=False)
+        df['DoC expiry date'] = df['DoC expiry date'].replace('DoC not issued', np.nan).infer_objects(copy=False)
+        df['DoC issue date'] = pd.to_datetime(df['DoC issue date'], format='%d/%m/%Y')
+        df['DoC expiry date'] = pd.to_datetime(df['DoC expiry date'], format='%d/%m/%Y')
+        
+        df = df.select_dtypes(include=['object']).fillna('Missing')
+        
+        pattern = r'(\w+)\s\(([\d.]+)\s(.*)\)'
+        df[['technical_efficiency_type', 'technical_efficiency_value', 'technical_efficiency_unit']] = df['Technical efficiency'].str.extract(pattern)
+        
+        # rename the columns
+        # complete the rest of the ETL
+        
+        return df
 
     def load(self, cleaned_emission_report: pd.DataFrame):
         """Loads the new file in the silver location of the bucket
