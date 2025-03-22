@@ -29,9 +29,19 @@ class GoogleCloudStorageManager():
             cloud_file = f"{bucket_layer}/{blob_name}"
             blob = self.bucket.blob(blob_name=cloud_file)
             contents = blob.download_as_bytes()
-            df = pd.read_csv(StringIO(contents.decode('utf-8')))
+            
+            # Determine file format based on extension
+            if blob_name.lower().endswith('.csv'):
+                df = pd.read_csv(StringIO(contents.decode('utf-8')))
+            elif blob_name.lower().endswith('.xlsx'):
+                df = pd.read_excel(BytesIO(contents), engine="openpyxl", header=2)
+            elif blob_name.lower().endswith('.parquet'):
+                df = pd.read_parquet(BytesIO(contents))
+            else:
+                raise ValueError(f"Unsupported file format for {blob_name}. Supported formats: csv, xlsx, parquet")
             
             return df
+            
         except Exception as e:
             print(f"Failed to fetch reports_metadata.csv from GCS: {e.with_traceback}")
             
