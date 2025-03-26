@@ -239,11 +239,12 @@ def main():
                 destination_blob_name=f"{year}/{filename}"
             )
             
+            logger.info('Updating the metadata of the files')
             blob = cloud_storage.bucket.get_blob(f"{'bronze-bucket'}/{year}/{filename}")
             metageneration_match_precondition = None
-            metadata = {'processed_by_ETL': False, 'ingestion_date':datetime.time}
-            meta = blob.metadata
-            meta.update()
+            metadata = {'processed_by_ETL': False}
+            blob.metadata = metadata
+            blob.patch(if_metageneration_match=metageneration_match_precondition)
 
             delete_file_from_local_directory(filepath=filepath)
 
@@ -255,6 +256,13 @@ def main():
         dataframe=reports_df_updated,
         destination_blob_name='reports_metadata.csv'
     )
+    
+    logger.info('Update metadata for the reports_metadata.csv')
+    blob = cloud_storage.bucket.get_blob(f"{'bronze-bucket'}/reports_metadata.csv")
+    metageneration_match_precondition = None
+    metadata = {'last_updated':datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    blob.metadata = metadata
+    blob.patch(if_metageneration_match=metageneration_match_precondition)
 
 if __name__ == "__main__":
     main()
