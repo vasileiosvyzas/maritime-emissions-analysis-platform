@@ -3,7 +3,7 @@ import datetime
 
 import pandas as pd
 import numpy as np
-from typing import List, Optional
+from typing import List, Optional, Dict
 from sys import stdout
 from google_cloud_storage_manager import GoogleCloudStorageManager
 
@@ -23,7 +23,7 @@ class ETLPipeline():
     def __init__(self):
         self.storage_client = GoogleCloudStorageManager()
 
-    def extract(self) -> List[pd.DataFrame]:
+    def extract(self) -> Dict[str, pd.DataFrame]:
         """Downloads the new CO2 emission report from the bronze location in the bucket.
         It needs to identify which is the new file that has been added comparing with the "old" ones 
         that have already been processed.
@@ -40,7 +40,8 @@ class ETLPipeline():
             if blob.name.endswith('.xlsx'):
                 logger.info(blob.name)
                 if blob.metadata['processed_by_ETL'] == 'False':
-                    df = self.storage_client.download_file_into_memory(blob_name=blob.name, bucket_layer='bronze-bucket')
+                    bucket_layer, year, filename = blob.name.split('/')
+                    df = self.storage_client.download_file_into_memory(blob_name=f"{year}/{filename}", bucket_layer=bucket_layer)
                     
                     df_to_process[blob.name] = df
         
@@ -58,11 +59,9 @@ class ETLPipeline():
         """
         
         logger.info('Transform function: Cleaning the dataset')
-                
-        df.drop(["Verifier Address", 
-                 "d.1", 
-                 "additional information to facilitate the understanding of the reported average operational energy efficiency indicators"], 
+        df.drop(columns=["Verifier Address", 'D.1', 'Additional information to facilitate the understanding of the reported average operational energy efficiency indicators'], 
                 axis=1, inplace=True)
+
         
         def get_monitoring_methods(row):
             methods = []
@@ -74,13 +73,11 @@ class ETLPipeline():
                 methods.append('C')
             if row['D'] == 'Yes':
                 methods.append('D')
-            if row['D.1'] == 'Yes':
-                methods.append('D.1')
             return ', '.join(methods) if methods else ''
 
         logger.info('Creating the monitoring methods columns')
         df['monitoring_methods'] = df.apply(get_monitoring_methods, axis=1)
-        df.drop(['A', 'B', 'C', 'D', 'D.1'], axis=1, inplace=True)
+        df.drop(['A', 'B', 'C', 'D'], axis=1, inplace=True)
         
         logger.info('Replacing the Division by zero! and DoC not issued values with NaN')
         df = df.replace(to_replace="Division by zero!", value=np.nan).infer_objects(copy=False)
@@ -89,7 +86,12 @@ class ETLPipeline():
         df['DoC issue date'] = pd.to_datetime(df['DoC issue date'], format='%d/%m/%Y')
         df['DoC expiry date'] = pd.to_datetime(df['DoC expiry date'], format='%d/%m/%Y')
         
-        df = df.select_dtypes(include=['object']).fillna('Missing')
+        logger.info("Fill NA at the object columns with the placeholder 'Missing'")
+        object_columns = ['Name', 'Ship type', 'Technical efficiency', 'Port of Registry',
+                          'Home Port', 'Ice Class', 'Verifier Number', 'Verifier Name',
+                          'Verifier NAB', 'Verifier City', 'Verifier Accreditation number',
+                          'Verifier Country', 'monitoring_methods']
+        df[object_columns] = df[object_columns].fillna('Missing')
         
         logger.info('Creating the technical efficiency columns')
         pattern = r'(\w+)\s\(([\d.]+)\s(.*)\)'
@@ -115,10 +117,6 @@ class ETLPipeline():
             'Verifier City': 'verifier_city',
             'Verifier Accreditation number': 'verifier_accreditation_number',
             'Verifier Country': 'verifier_country',
-            'A': 'a',
-            'B': 'b',
-            'C': 'c',
-            'D': 'd',
             'Total fuel consumption [m tonnes]': 'total_fuel_consumption_[m_tonnes]',
             'Fuel consumptions assigned to On laden [m tonnes]': 'fuel_consumptions_assigned_to_on_laden_[m_tonnes]',
             'Total CO₂ emissions [m tonnes]': 'total_co₂_emissions_[m_tonnes]',
@@ -163,7 +161,7 @@ class ETLPipeline():
                 
         return df
 
-    def load(self, cleaned_emission_report: pd.DataFrame, report_name:str):
+    def load(self, cleaned_emission_report: pd.DataFrame, report_name:str, bucket_layer:str):
         """Loads the new file in the silver location of the bucket
 
         Args:
@@ -173,12 +171,12 @@ class ETLPipeline():
         
         logger.info('uploading the clean file to the silver bucket')
         self.storage_client.upload_dataframe_from_memory(
-            bucket_layer='silver-bucket', 
+            bucket_layer=bucket_layer, 
             dataframe=cleaned_emission_report, 
             destination_blob_name=report_name)
         
-        logger.info('Updating the metadata of the files')
-        blob = self.storage_client.bucket.get_blob(f"{'silver-bucket'}/report_name")
+        logger.info('Updating the metadata of the files in the silver bucket')
+        blob = self.storage_client.bucket.get_blob(f"{bucket_layer}/{report_name}")
         metageneration_match_precondition = None
         metadata = {'processed_by_ETL': True, 'processed_date':datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
         blob.metadata = metadata
@@ -186,17 +184,24 @@ class ETLPipeline():
         
     
     def run(self):
-        etl = ETLPipeline()
-        raw_data_list = etl.extract()
+        raw_data_list = self.extract()
         
-        for df_name, df_contents in raw_data_list:
-            transformed_df = etl.tranform(emission_report=df_contents)
+        for df_name, df_contents in raw_data_list.items():
+            transformed_df = self.tranform(df=df_contents)
             
-            bucket_layer, year, filename =df_name.name.split('/')
-            etl.load(cleaned_emission_report=transformed_df, report_name=f"{year}/{filename}")
+            bucket_layer, year, filename =df_name.split('/')
+            self.load(cleaned_emission_report=transformed_df, report_name=f"{year}/{filename}", bucket_layer='silver-bucket')
+            
+            logger.info('Updating the metadata of the files in the bronze bucket')
+            blob = self.storage_client.bucket.get_blob(f"bronze-bucket/{year}/{filename}")
+            metageneration_match_precondition = None
+            metadata = {'processed_by_ETL': True, 'processed_date':datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+            blob.metadata = metadata
+            blob.patch(if_metageneration_match=metageneration_match_precondition)
 
 def main():
-    pass
+    etl = ETLPipeline()
+    etl.run()
 
 if __name__=='__main__':
     main()

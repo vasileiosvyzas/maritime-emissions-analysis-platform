@@ -43,7 +43,7 @@ class GoogleCloudStorageManager():
             return df
             
         except Exception as e:
-            print(f"Failed to fetch reports_metadata.csv from GCS: {e.with_traceback}")
+            print(f"Failed to fetch report from GCS: {e.with_traceback}")
             
     def upload_file(self, source_file:str, bucket_layer:str, destination_blob_name:str):
         """Uploads the source file to a specific location in the bucket
