@@ -11,6 +11,7 @@ from io import StringIO
 from sys import stdout
 from botocore.exceptions import ClientError
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
@@ -38,7 +39,9 @@ def prepare_selenium_params():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_experimental_option("prefs", {"download.default_directory": "/tmp"})
-    driver = webdriver.Remote("http://chrome:4444", options=options)
+    # driver = webdriver.Remote("http://chrome:4444", options=options)
+    service = Service(executable_path='/usr/bin/chromedriver')
+    driver = webdriver.Chrome(service=service, options=options)
 
     return driver
 
