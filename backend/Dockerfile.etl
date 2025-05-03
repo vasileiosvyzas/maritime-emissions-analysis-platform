@@ -1,0 +1,14 @@
+FROM python:3.9
+
+WORKDIR /app
+
+COPY requirements.txt /app/requirements.txt
+
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
+
+COPY ./src/etl_pipeline.py /app/etl_pipeline.py
+COPY ./src/google_cloud_storage_manager.py /app/google_cloud_storage_manager.py
+COPY .env /app/.env
+
+CMD ["python", "etl_pipeline.py"]
