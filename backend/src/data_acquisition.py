@@ -16,7 +16,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from dotenv import load_dotenv
-from google_cloud_storage_manager import GoogleCloudStorageManager
+from .google_cloud_storage_manager import GoogleCloudStorageManager
 
 
 load_dotenv()

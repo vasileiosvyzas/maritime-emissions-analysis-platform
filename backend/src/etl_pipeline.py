@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from typing import List, Optional, Dict
 from sys import stdout
-from google_cloud_storage_manager import GoogleCloudStorageManager
+from .google_cloud_storage_manager import GoogleCloudStorageManager
 
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -190,7 +190,7 @@ class ETLPipeline():
             transformed_df = self.tranform(df=df_contents)
             
             bucket_layer, year, filename =df_name.split('/')
-            self.load(cleaned_emission_report=transformed_df, report_name=f"{year}/{filename}", bucket_layer='silver-bucket')
+            self.load(cleaned_emission_report=transformed_df, report_name=f"{year}/{filename.replace('xlsx', 'parquet')}", bucket_layer='silver-bucket')
             
             logger.info('Updating the metadata of the files in the bronze bucket')
             blob = self.storage_client.bucket.get_blob(f"bronze-bucket/{year}/{filename}")
