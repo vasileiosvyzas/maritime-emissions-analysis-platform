@@ -16,7 +16,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from dotenv import load_dotenv
-from .google_cloud_storage_manager import GoogleCloudStorageManager
+from google_cloud_storage_manager import GoogleCloudStorageManager
 
 
 load_dotenv()
@@ -252,11 +252,24 @@ def main():
             delete_file_from_local_directory(filepath=filepath)
 
     reports_df_updated = df_with_new_versions[["Reporting Period", "Version", "Generation Date", "File"]].copy()
+    updated_df = reports_df_old.copy()
+
+    # Update values in the current dataframe where Reporting Period matches
+    for index, row in reports_df_updated.iterrows():
+        reporting_period = row['Reporting Period']
+        mask = updated_df['Reporting Period'] == reporting_period
+        
+        if mask.any():
+            # Update all columns for the matching row
+            for col in updated_df.columns:
+                if col != 'Reporting Period':  # Skip the key column
+                    updated_df.loc[mask, col] = row[col]
+                    
     logger.info("Updated the current df")
     
     cloud_storage.upload_dataframe_from_memory(
         bucket_layer='bronze-bucket',
-        dataframe=reports_df_updated,
+        dataframe=updated_df,
         destination_blob_name='reports_metadata.csv'
     )
     
