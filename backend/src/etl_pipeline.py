@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from typing import List, Optional, Dict
 from sys import stdout
-from .google_cloud_storage_manager import GoogleCloudStorageManager
+from google_cloud_storage_manager import GoogleCloudStorageManager
 
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -161,7 +161,7 @@ class ETLPipeline():
                 
         return df
 
-    def load(self, cleaned_emission_report: pd.DataFrame, report_name:str, bucket_layer:str):
+    def load(self, clean_dataframe: pd.DataFrame, report_name:str, bucket_layer:str):
         """Loads the new file in the silver location of the bucket
 
         Args:
@@ -169,10 +169,10 @@ class ETLPipeline():
         """
         logger.info('=== load function ===')
         
-        logger.info('uploading the clean file to the silver bucket')
-        self.storage_client.upload_dataframe_from_memory(
+        logger.info(f"uploading the clean file: {report_name} to the silver bucket")        
+        self.storage_client.upload_parquet_file_to_bucket(
             bucket_layer=bucket_layer, 
-            dataframe=cleaned_emission_report, 
+            dataframe=clean_dataframe, 
             destination_blob_name=report_name)
         
         logger.info('Updating the metadata of the files in the silver bucket')
@@ -190,7 +190,8 @@ class ETLPipeline():
             transformed_df = self.tranform(df=df_contents)
             
             bucket_layer, year, filename =df_name.split('/')
-            self.load(cleaned_emission_report=transformed_df, report_name=f"{year}/{filename.replace('xlsx', 'parquet')}", bucket_layer='silver-bucket')
+            print()
+            self.load(clean_dataframe=transformed_df, report_name=f"{year}/{filename.replace('xlsx', 'parquet')}", bucket_layer='silver-bucket')
             
             logger.info('Updating the metadata of the files in the bronze bucket')
             blob = self.storage_client.bucket.get_blob(f"bronze-bucket/{year}/{filename}")

@@ -77,4 +77,21 @@ class GoogleCloudStorageManager():
             blob.upload_from_string(csv_buffer.getvalue(), content_type='text/csv')
         except Exception as e:
             print(e)
+            
+    def upload_parquet_file_to_bucket(self, bucket_layer:str, dataframe:pd.DataFrame, destination_blob_name:str):
+        """Uploads the contents of a file that are in memory to a
+        file in the bucket location specified.
+
+        Args:
+            bucket_layer (str): one of three options (bronze, silver, gold)
+            destination_blob_name (str): the name of the file in the bucket
+        """
+        try:
+            blob = self.bucket.blob(f"{bucket_layer}/{destination_blob_name}")
+            parquet_buffer = BytesIO()
+            dataframe.to_parquet(parquet_buffer, engine='pyarrow', index=False)
+            parquet_buffer.seek(0)
+            blob.upload_from_file(parquet_buffer, content_type='application/vnd.apache.parquet')
+        except Exception as e:
+            print(e)
         
