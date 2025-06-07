@@ -2,6 +2,8 @@
   <img src="frontend/public/icon_for_the_name_shipcarbontracker_blue%20(1).png" width="200" height="200">
 </p>
 
+[![Unit Tests](https://github.com/vasileiosvyzas/maritime-emissions-analysis-platform/actions/workflows/github-actions.yml/badge.svg)](https://github.com/vasileiosvyzas/maritime-emissions-analysis-platform/actions/workflows/github-actions.yml)
+
 # Maritime Emissions Analysis Platform
 A full-stack data analytics platform built on AWS, featuring automated data pipelines, interactive dashboards, and API integration, all orchestrated with Docker containers.
 
