@@ -130,7 +130,7 @@ def test_load(etl_pipeline):
     etl_pipeline.load(df, report_name, bucket_layer)
     
     # Assertions
-    etl_pipeline.storage_client.upload_dataframe_from_memory.assert_called_once_with(
+    etl_pipeline.storage_client.upload_parquet_file_to_bucket.assert_called_once_with(
         bucket_layer=bucket_layer, 
         dataframe=df, 
         destination_blob_name=report_name
@@ -167,7 +167,7 @@ def test_run(etl_pipeline):
         mock_extract.assert_called_once()
         mock_transform.assert_called_once_with(df=mock_df)
         mock_load.assert_called_once_with(
-            cleaned_emission_report=mock_transformed_df, 
+            clean_dataframe=mock_transformed_df, 
             report_name='2023/report.parquet', 
             bucket_layer='silver-bucket'
         )

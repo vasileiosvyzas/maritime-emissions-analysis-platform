@@ -30,13 +30,18 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+ENV PYTHONPATH=/app
+
 COPY requirements.txt /app/requirements.txt
 
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
 
-COPY ./src/data_acquisition.py /app/data_acquisition.py
-COPY ./src/google_cloud_storage_manager.py /app/google_cloud_storage_manager.py
+RUN mkdir -p /app/src
+
+COPY ./src/data_acquisition.py /app/src/data_acquisition.py
+COPY ./src/google_cloud_storage_manager.py /app/src/google_cloud_storage_manager.py
+COPY ./src/__init__.py /app/src/__init__.py
 COPY .env /app/.env
 
-CMD ["python", "data_acquisition.py"]
+CMD ["python", "src/data_acquisition.py"]
