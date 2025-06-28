@@ -1,0 +1,85 @@
+# This workflow builds and pushes a Docker container to Google Artifact Registry
+# and updates a Cloud Run Job when a commit is pushed to the "main" branch.
+#
+# To configure this workflow:
+#
+# 1. Enable the following Google Cloud APIs:
+#    - Artifact Registry API (artifactregistry.googleapis.com)
+#    - Cloud Run Admin API (run.googleapis.com)
+#
+# 2. Create and configure a Workload Identity Provider for GitHub:
+#    https://github.com/google-github-actions/auth#setting-up-workload-identity-federation
+#
+#    Grant the following IAM roles to your GitHub Actions service account:
+#    - roles/artifactregistry.writer  (to push images to Artifact Registry)
+#    - roles/run.developer           (to update and run Cloud Run jobs)
+#    - roles/iam.serviceAccountUser  (if your job runs with a custom service account)
+#
+# 3. Change the values in the "env" block to match your values.
+
+name: 'Build and Update Cloud Run Job'
+
+on:
+  push:
+    branches:
+      - 'main' # Corrected syntax for the branch name
+
+env:
+  PROJECT_ID: '${{ secrets.GOOGLE_PROJECT_ID }}'
+  REGION: 'us-west1'
+  JOB: 'python-selenium-single-image' # The name of your Cloud Run Job
+  ARTIFACT_REPOSITORY: 'quickstart-docker-repo' # The name of your Artifact Registry repository
+
+jobs:
+  build-and-update-job:
+    runs-on: 'ubuntu-latest'
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@v4'
+
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: '${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}' # It's best practice to store this in secrets
+          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT }}' # The email of the service account to impersonate
+
+      # Set up gcloud CLI for subsequent steps
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: 'Docker Auth'
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      - name: 'Build and Push Container'
+        run: |
+          # Define the full image tag
+          IMAGE_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPOSITORY }}/${{ env.JOB }}:${{ github.sha }}"
+          
+          # Build the Docker image
+          docker build -t "${IMAGE_TAG}" -f backend/Dockerfile backend
+          
+          # Push the Docker image to Artifact Registry
+          docker push "${IMAGE_TAG}"
+          
+          # Pass the image tag to the next step
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+
+      - name: 'Update Cloud Run Job with new image'
+        run: |
+          gcloud run jobs update ${{ env.JOB }} \
+            --image "${{ env.IMAGE_TAG }}" \
+            --region "${{ env.REGION }}" \
+            --project "${{ env.PROJECT_ID }}"
+
+      # (Optional) Execute the job after updating it
+      # - name: 'Execute Cloud Run Job'
+      #   run: |
+      #     gcloud run jobs execute ${{ env.JOB }} \
+      #       --region "${{ env.REGION }}" \
+      #       --wait # Use --wait to have the step succeed/fail based on the job's execution
