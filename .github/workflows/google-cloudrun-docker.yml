@@ -42,6 +42,11 @@ jobs:
       - name: 'Checkout'
         uses: 'actions/checkout@v4'
 
+      - name: Create .env file
+        run: |
+          echo "GOOGLE_PROJECT_ID=${{ secrets.GOOGLE_PROJECT_ID }}" >> backend/.env
+          echo "BUCKET_NAME=${{ secrets.BUCKET_NAME }}" >> backend/.env
+
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v2'
