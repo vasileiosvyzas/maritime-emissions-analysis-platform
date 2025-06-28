@@ -79,7 +79,7 @@ jobs:
         run: |
           gcloud run jobs update ${{ env.JOB }} \
             --image "${{ env.IMAGE_TAG }}" \
-            --region "${{ env.REGION }}" \
+            --region "us-central1" \
             --project "${{ env.PROJECT_ID }}"
 
       # (Optional) Execute the job after updating it
