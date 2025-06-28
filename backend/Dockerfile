@@ -32,7 +32,7 @@ RUN apt-get update && \
 
 ENV PYTHONPATH=/app
 
-COPY ./requirements.txt /app/requirements.txt
+COPY requirements.txt /app/requirements.txt
 
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt

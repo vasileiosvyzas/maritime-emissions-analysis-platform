@@ -25,7 +25,7 @@ on:
       - 'main' # Corrected syntax for the branch name
 
 env:
-  PROJECT_ID: '${{ secrets.GOOGLE_PROJECT_ID }}'
+  PROJECT_ID: '${{ secrets.GCP_PROJECT_ID }}'
   REGION: 'us-west1'
   JOB: 'python-selenium-single-image' # The name of your Cloud Run Job
   ARTIFACT_REPOSITORY: 'quickstart-docker-repo' # The name of your Artifact Registry repository
