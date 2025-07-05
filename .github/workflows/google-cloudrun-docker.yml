@@ -23,6 +23,10 @@ on:
   push:
     branches:
       - 'main' # Corrected syntax for the branch name
+    paths:
+      - 'backend/**'
+      - 'backend/Dockerfile'
+      - '.github/workflows/google-cloudrun-docker.yml'
 
 env:
   PROJECT_ID: '${{ secrets.GCP_PROJECT_ID }}'
@@ -32,6 +36,7 @@ env:
 
 jobs:
   build-and-update-job:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: 'ubuntu-latest'
 
     permissions:
@@ -83,8 +88,8 @@ jobs:
             --project "${{ env.PROJECT_ID }}"
 
       # (Optional) Execute the job after updating it
-      # - name: 'Execute Cloud Run Job'
-      #   run: |
-      #     gcloud run jobs execute ${{ env.JOB }} \
-      #       --region "${{ env.REGION }}" \
-      #       --wait # Use --wait to have the step succeed/fail based on the job's execution
+      - name: 'Execute Cloud Run Job'
+        run: |
+          gcloud run jobs execute ${{ env.JOB }} \
+            --region "${{ env.REGION }}" \
+            --wait # Use --wait to have the step succeed/fail based on the job's execution

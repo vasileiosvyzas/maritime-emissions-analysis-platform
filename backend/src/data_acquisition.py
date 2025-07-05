@@ -65,7 +65,7 @@ def get_reporting_table_content():
 
         table_element = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located(
-                (By.XPATH, '//*[@id="gridview-1152"]/div[2]')
+                (By.XPATH, '//*[@id="gridview-1156"]/div[2]')
             )
         )
         table_rows = table_element.find_elements(By.TAG_NAME, "tr")
