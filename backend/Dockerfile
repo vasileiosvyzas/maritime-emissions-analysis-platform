@@ -42,6 +42,6 @@ RUN mkdir -p /app/src
 COPY ./src/data_acquisition.py /app/src/data_acquisition.py
 COPY ./src/google_cloud_storage_manager.py /app/src/google_cloud_storage_manager.py
 COPY ./src/__init__.py /app/src/__init__.py
-COPY .env /app/.env
+COPY .env /app/src/.env
 
 CMD ["python", "src/data_acquisition.py"]

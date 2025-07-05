@@ -91,5 +91,5 @@ jobs:
       - name: 'Execute Cloud Run Job'
         run: |
           gcloud run jobs execute ${{ env.JOB }} \
-            --region "${{ env.REGION }}" \
+            --region "us-central1" \
             --wait # Use --wait to have the step succeed/fail based on the job's execution
