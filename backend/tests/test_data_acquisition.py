@@ -45,12 +45,14 @@ def test_reports_have_new_versions():
         ],
     )
 
-    new_versions_df = check_for_new_report_versions(
+    new_versions_df, new_reports = check_for_new_report_versions(
         current_df=sample_current_df, new_df=sample_new_df
     )
     assert new_versions_df.iloc[0]["Reporting Period"] == 2023
     assert new_versions_df.iloc[0]["Version"] == 33
     assert new_versions_df.iloc[1]["Version"] == 229
+    
+    assert new_reports.shape == (2, 4)
 
 
 def test_report_version_with_new_year():
@@ -82,7 +84,7 @@ def test_report_version_with_new_year():
         ],
     )
 
-    new_versions_df = check_for_new_report_versions(
+    new_versions_df, new_reports = check_for_new_report_versions(
         current_df=sample_current_df, new_df=sample_new_df
     )
     assert new_versions_df.iloc[0]["Reporting Period"] == 2024
@@ -90,6 +92,8 @@ def test_report_version_with_new_year():
 
     assert new_versions_df.iloc[1]["Reporting Period"] == 2023
     assert new_versions_df.iloc[1]["Version"] == 33
+    
+    assert new_reports.shape == (3, 4)
 
 
 def test_no_changes_to_report_version():
@@ -120,10 +124,11 @@ def test_no_changes_to_report_version():
         ],
     )
 
-    new_versions_df = check_for_new_report_versions(
+    new_versions_df, new_reports = check_for_new_report_versions(
         current_df=sample_current_df, new_df=sample_new_df
     )
     assert new_versions_df.empty == True
+    assert new_reports.shape == (2, 4)
 
 # Test for successful data extraction
 @patch('src.data_acquisition.prepare_selenium_params')

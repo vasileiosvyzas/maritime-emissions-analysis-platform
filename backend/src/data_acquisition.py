@@ -152,8 +152,11 @@ def check_for_new_report_versions(current_df, new_df):
         "Reporting Period"
     ]
     logger.info(new_versions)
+    
+    new_reports_metadata = merged_df[['Reporting Period', 'Version_new', 'Generation Date_new', 'File_new']].copy()
+    new_reports_metadata.rename(columns={'Version_new': 'Version', 'Generation Date_new': 'Generation Date', 'File_new': 'File'}, inplace=True)
 
-    return new_df[new_df["Reporting Period"].isin(new_versions)]
+    return new_df[new_df["Reporting Period"].isin(new_versions)], new_reports_metadata
 
 
 def delete_file_from_local_directory(filepath):
@@ -216,7 +219,7 @@ def main():
     reports_df_old = cloud_storage.download_file_into_memory(blob_name='reports_metadata.csv', bucket_layer='bronze-bucket')
 
     logger.info("Check for new versions of the reports")
-    df_with_new_versions = check_for_new_report_versions(
+    df_with_new_versions, new_metadata = check_for_new_report_versions(
         current_df=reports_df_old, new_df=reports_df_new
     )
 
@@ -250,26 +253,12 @@ def main():
             blob.patch(if_metageneration_match=metageneration_match_precondition)
 
             delete_file_from_local_directory(filepath=filepath)
-
-    reports_df_updated = df_with_new_versions[["Reporting Period", "Version", "Generation Date", "File"]].copy()
-    updated_df = reports_df_old.copy()
-
-    # Update values in the current dataframe where Reporting Period matches
-    for index, row in reports_df_updated.iterrows():
-        reporting_period = row['Reporting Period']
-        mask = updated_df['Reporting Period'] == reporting_period
-        
-        if mask.any():
-            # Update all columns for the matching row
-            for col in updated_df.columns:
-                if col != 'Reporting Period':  # Skip the key column
-                    updated_df.loc[mask, col] = row[col]
                     
-    logger.info("Updated the current df")
+    logger.info("Saving the updated reports metadata on GCS")
     
     cloud_storage.upload_dataframe_from_memory(
         bucket_layer='bronze-bucket',
-        dataframe=updated_df,
+        dataframe=new_metadata,
         destination_blob_name='reports_metadata.csv'
     )
     
