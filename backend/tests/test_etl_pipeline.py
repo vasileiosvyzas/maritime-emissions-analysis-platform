@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import patch, Mock
 import pandas as pd
-import numpy as np
 import datetime
 from src.etl_pipeline import ETLPipeline
 
