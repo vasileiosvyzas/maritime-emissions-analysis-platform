@@ -41,10 +41,10 @@ class ETLPipeline():
             if blob.name.endswith('.xlsx'):
                 logger.info(blob.name)
                 if blob.metadata['processed_by_ETL'] == 'False':
-                    logger.info("File hasn't been processed by the ETL yet. Processing...")
+                    logger.info("Reading files contents in memory")
                     bucket_layer, year, filename = blob.name.split('/')
                     df = self.storage_client.download_file_into_memory(blob_name=f"{year}/{filename}", bucket_layer=bucket_layer)
-                    logger.info("Got the contents of the dataset")
+                    logger.info("Adding dataset contents to list")
                     df_to_process[blob.name] = df
                     
         logger.info('==> Extraction is done. <==')
@@ -141,7 +141,6 @@ class ETLPipeline():
         df.drop(['Technical efficiency'], axis=1, inplace=True)
         df['technical_efficiency_value'] = df['technical_efficiency_value'].astype('float')
         
-        logger.info('Changing the column names')
         column_name_mapping = {
             'IMO Number': 'imo_number',
             'Name': 'name',
@@ -207,12 +206,13 @@ class ETLPipeline():
         column_difference.remove('monitoring_methods')
         column_difference.remove('technical_efficiency_type')
         
+        logger.info("Renaming the new columns")
         additional_column_name_mapping = {col:self._clean_column_name(col) for col in column_difference}
         
-        # combine the two dictionaries
+        logger.info("Combining the dictionaries with the column names")
         column_names = column_name_mapping | additional_column_name_mapping
         
-        logger.info('Renamed the column names')
+        logger.info('Applied the column renaming')
         df = df.rename(columns=column_names)
         
         logger.info('==> Transformation is done. <==')
