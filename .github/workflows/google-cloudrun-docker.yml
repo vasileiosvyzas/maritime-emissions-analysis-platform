@@ -1,5 +1,5 @@
-# This workflow builds and pushes a Docker container to Google Artifact Registry
-# and updates a Cloud Run Job when a commit is pushed to the "main" branch.
+# This workflow builds and pushes Docker containers to Google Artifact Registry
+# and updates Cloud Run Jobs when commits are pushed to the "main" branch.
 #
 # To configure this workflow:
 #
@@ -17,27 +17,88 @@
 #
 # 3. Change the values in the "env" block to match your values.
 
-name: 'Build and Update Cloud Run Job'
+name: 'Build and Update Cloud Run Jobs'
 
 on:
   push:
     branches:
-      - 'main' # Corrected syntax for the branch name
+      - 'main'
     paths:
       - 'backend/**'
-      - 'backend/Dockerfile'
       - '.github/workflows/google-cloudrun-docker.yml'
 
 env:
   PROJECT_ID: '${{ secrets.GCP_PROJECT_ID }}'
   REGION: 'us-west1'
-  JOB: 'python-selenium-single-image' # The name of your Cloud Run Job
-  ARTIFACT_REPOSITORY: 'quickstart-docker-repo' # The name of your Artifact Registry repository
+  ARTIFACT_REPOSITORY: 'quickstart-docker-repo'
 
 jobs:
-  build-and-update-job:
+  # Job to determine which services need to be built based on changed files
+  detect-changes:
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: 'ubuntu-latest'
+    outputs:
+      data-acquisition: ${{ steps.changes.outputs.data-acquisition }}
+      etl: ${{ steps.changes.outputs.etl }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@v4'
+        with:
+          fetch-depth: 2
+
+      - name: 'Detect changes'
+        id: 'changes'
+        run: |
+          # Check if data acquisition files changed
+          if git diff --name-only HEAD^ HEAD | grep -E '^backend/(Dockerfile|src/data_acquisition\.py)'; then
+            echo "data-acquisition=true" >> $GITHUB_OUTPUT
+          else
+            echo "data-acquisition=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Check if ETL files changed
+          if git diff --name-only HEAD^ HEAD | grep -E '^backend/(Dockerfile\.etl|src/etl_pipeline\.py)'; then
+            echo "etl=true" >> $GITHUB_OUTPUT
+          else
+            echo "etl=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 'Set matrix'
+        id: 'set-matrix'
+        run: |
+          matrix='{"include":['
+          first=true
+          
+          if [[ "${{ steps.changes.outputs.data-acquisition }}" == "true" ]]; then
+            if [[ "$first" == "false" ]]; then
+              matrix+=','
+            fi
+            matrix+='{"service":"data-acquisition","dockerfile":"backend/Dockerfile","context":"backend","job":"python-selenium-single-image","region":"us-central1","env_setup":true}'
+            first=false
+          fi
+          
+          if [[ "${{ steps.changes.outputs.etl }}" == "true" ]]; then
+            if [[ "$first" == "false" ]]; then
+              matrix+=','
+            fi
+            matrix+='{"service":"etl","dockerfile":"backend/Dockerfile.etl","context":"backend","job":"etl_pipeline","region":"us-central1","env_setup":true}'
+            first=false
+          fi
+          
+          matrix+=']}'
+          
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+          echo "Generated matrix: $matrix"
+
+  build-and-update-jobs:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.matrix != '{"include":[]}'
+    runs-on: 'ubuntu-latest'
+    
+    strategy:
+      matrix: ${{fromJson(needs.detect-changes.outputs.matrix)}}
+      fail-fast: false # Continue building other services even if one fails
 
     permissions:
       contents: 'read'
@@ -47,19 +108,19 @@ jobs:
       - name: 'Checkout'
         uses: 'actions/checkout@v4'
 
-      - name: Create .env file
+      - name: 'Create .env file for backend'
+        if: matrix.env_setup
         run: |
-          echo "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> backend/.env
-          echo "BUCKET_NAME=${{ secrets.BUCKET_NAME }}" >> backend/.env
+          echo "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> ${{ matrix.context }}/.env
+          echo "BUCKET_NAME=${{ secrets.BUCKET_NAME }}" >> ${{ matrix.context }}/.env
 
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v2'
         with:
-          workload_identity_provider: '${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}' # It's best practice to store this in secrets
-          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT }}' # The email of the service account to impersonate
+          workload_identity_provider: '${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}'
+          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
 
-      # Set up gcloud CLI for subsequent steps
       - name: 'Set up Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v2'
 
@@ -69,10 +130,15 @@ jobs:
       - name: 'Build and Push Container'
         run: |
           # Define the full image tag
-          IMAGE_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPOSITORY }}/${{ env.JOB }}:${{ github.sha }}"
+          IMAGE_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPOSITORY }}/${{ matrix.job }}:${{ github.sha }}"
+          
+          echo "Building ${{ matrix.service }} service..."
+          echo "Dockerfile: ${{ matrix.dockerfile }}"
+          echo "Context: ${{ matrix.context }}"
+          echo "Image tag: ${IMAGE_TAG}"
           
           # Build the Docker image
-          docker build -t "${IMAGE_TAG}" -f backend/Dockerfile backend
+          docker build -t "${IMAGE_TAG}" -f ${{ matrix.dockerfile }} ${{ matrix.context }}
           
           # Push the Docker image to Artifact Registry
           docker push "${IMAGE_TAG}"
@@ -82,14 +148,15 @@ jobs:
 
       - name: 'Update Cloud Run Job with new image'
         run: |
-          gcloud run jobs update ${{ env.JOB }} \
+          echo "Updating Cloud Run job: ${{ matrix.job }}"
+          gcloud run jobs update ${{ matrix.job }} \
             --image "${{ env.IMAGE_TAG }}" \
-            --region "us-central1" \
+            --region "${{ matrix.region }}" \
             --project "${{ env.PROJECT_ID }}"
 
-      # (Optional) Execute the job after updating it
       - name: 'Execute Cloud Run Job'
         run: |
-          gcloud run jobs execute ${{ env.JOB }} \
-            --region "us-central1" \
-            --wait # Use --wait to have the step succeed/fail based on the job's execution
+          echo "Executing Cloud Run job: ${{ matrix.job }}"
+          gcloud run jobs execute ${{ matrix.job }} \
+            --region "${{ matrix.region }}" \
+            --wait
