@@ -82,7 +82,7 @@ jobs:
             if [[ "$first" == "false" ]]; then
               matrix+=','
             fi
-            matrix+='{"service":"etl","dockerfile":"backend/Dockerfile.etl","context":"backend","job":"etl_pipeline","region":"us-central1","env_setup":true}'
+            matrix+='{"service":"etl","dockerfile":"backend/Dockerfile.etl","context":"backend","job":"etl-pipeline","region":"us-central1","env_setup":true}'
             first=false
           fi
           
