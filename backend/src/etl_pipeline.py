@@ -1,5 +1,6 @@
 import logging
 import datetime
+import re
 
 import pandas as pd
 import numpy as np
@@ -40,13 +41,46 @@ class ETLPipeline():
             if blob.name.endswith('.xlsx'):
                 logger.info(blob.name)
                 if blob.metadata['processed_by_ETL'] == 'False':
+                    logger.info("File hasn't been processed by the ETL yet. Processing...")
                     bucket_layer, year, filename = blob.name.split('/')
                     df = self.storage_client.download_file_into_memory(blob_name=f"{year}/{filename}", bucket_layer=bucket_layer)
-                    
+                    logger.info("Got the contents of the dataset")
                     df_to_process[blob.name] = df
         
         return df_to_process
+    
+    def _clean_column_name(text):
+        """Clean column names with special handling for common patterns"""
+        if text == 'IMO Number.1':
+            text = 'ship_company_imo_number'
+        elif text == 'Name.1':
+            text = 'ship_company_name'
         
+        # Handle special characters
+        replacements = {
+            'CO₂': 'co2',
+            'CH₄': 'ch4',
+            'DoC': 'doc',
+            'MS': 'ms',
+            'NAB': 'nab',
+        }
+        
+        for old, new in replacements.items():
+            text = text.replace(old, new)
+        
+        # Remove content within brackets
+        text = re.sub(r'\[.*?\]', '', text)
+        # Remove asterisks
+        text = re.sub(r'\*+', '', text)
+        # Replace spaces and special characters with underscores
+        text = re.sub(r'[\s\-\.]+', '_', text)
+        # Convert to lowercase
+        text = text.lower()
+        # Clean up underscores
+        text = text.strip('_')
+        text = re.sub(r'_+', '_', text)
+        
+        return text        
 
     def tranform(self, df: pd.DataFrame) -> pd.DataFrame:
         """Does all the transformations on the emission report to make it clean
@@ -59,8 +93,14 @@ class ETLPipeline():
         """
         
         logger.info('Transform function: Cleaning the dataset')
-        df.drop(columns=["Verifier Address", 'D.1', 'Additional information to facilitate the understanding of the reported average operational energy efficiency indicators'], 
-                axis=1, inplace=True)
+        if 'Verifier Number' in df.columns:
+            df.drop(
+                columns=["Verifier Address", 'Verifier Number', 'D.1', 'Additional information to facilitate the understanding of the reported average operational energy efficiency indicators'], 
+                axis=1, inplace=True
+            )
+        else:
+            df.drop(columns=["Verifier Address", 'D.1', 'Additional information to facilitate the understanding of the reported average operational energy efficiency indicators'], 
+                        axis=1, inplace=True)
 
         
         def get_monitoring_methods(row):
@@ -88,7 +128,7 @@ class ETLPipeline():
         
         logger.info("Fill NA at the object columns with the placeholder 'Missing'")
         object_columns = ['Name', 'Ship type', 'Technical efficiency', 'Port of Registry',
-                          'Home Port', 'Ice Class', 'Verifier Number', 'Verifier Name',
+                          'Home Port', 'Ice Class', 'Verifier Name',
                           'Verifier NAB', 'Verifier City', 'Verifier Accreditation number',
                           'Verifier Country', 'monitoring_methods']
         df[object_columns] = df[object_columns].fillna('Missing')
@@ -98,6 +138,8 @@ class ETLPipeline():
         df[['technical_efficiency_type', 'technical_efficiency_value', 'technical_efficiency_unit']] = df['Technical efficiency'].str.extract(pattern)
         df.drop(['Technical efficiency'], axis=1, inplace=True)
         df['technical_efficiency_value'] = df['technical_efficiency_value'].astype('float')
+        
+        
         
         logger.info('Changing the column names')
         column_name_mapping = {
@@ -155,10 +197,24 @@ class ETLPipeline():
             'CO₂ emissions per transport work (dwt) on laden voyages [g CO₂ / dwt carried · n miles]': 'co₂_emissions_per_transport_work_(dwt)_on_laden_voyages_[g_co₂_/_dwt_carried_·_n_miles]',
             'CO₂ emissions per transport work (pax) on laden voyages [g CO₂ / pax · n miles]': 'co₂_emissions_per_transport_work_(pax)_on_laden_voyages_[g_co₂_/_pax_·_n_miles]',
             'CO₂ emissions per transport work (freight) on laden voyages [g CO₂ / m tonnes · n miles]': 'co₂_emissions_per_transport_work_(freight)_on_laden_voyages_[g_co₂_/_m_tonnes_·_n_miles]',
-            'Average density of the cargo transported [m tonnes / m³]': 'average_density_of_the_cargo_transported_[m_tonnes_/_m³]'
+            'Average density of the cargo transported [m tonnes / m³]': 'average_density_of_the_cargo_transported_[m_tonnes_/_m³]',
+            'IMO Number.1': 'ship_company_imo_number', 
+            'Name.1': 'ship_company_name'
         }
-        df = df.rename(columns=column_name_mapping)
-                
+        column_difference = list(set(df.columns).difference(column_name_mapping.keys()))
+        column_difference.remove('technical_efficiency_unit')
+        column_difference.remove('technical_efficiency_value')
+        column_difference.remove('monitoring_methods')
+        column_difference.remove('technical_efficiency_type')
+        
+        additional_column_name_mapping = {col:self._clean_column_name(col) for col in column_difference}
+        
+        # combine the two dictionaries
+        column_names = column_name_mapping | additional_column_name_mapping
+        
+        logger.info('Renamed the column names')
+        df = df.rename(columns=column_names)
+        
         return df
 
     def load(self, clean_dataframe: pd.DataFrame, report_name:str, bucket_layer:str):
