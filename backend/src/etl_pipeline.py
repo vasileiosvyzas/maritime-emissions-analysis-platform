@@ -46,6 +46,8 @@ class ETLPipeline():
                     df = self.storage_client.download_file_into_memory(blob_name=f"{year}/{filename}", bucket_layer=bucket_layer)
                     logger.info("Got the contents of the dataset")
                     df_to_process[blob.name] = df
+                    
+        logger.info('==> Extraction is done. <==')
         
         return df_to_process
     
@@ -139,8 +141,6 @@ class ETLPipeline():
         df.drop(['Technical efficiency'], axis=1, inplace=True)
         df['technical_efficiency_value'] = df['technical_efficiency_value'].astype('float')
         
-        
-        
         logger.info('Changing the column names')
         column_name_mapping = {
             'IMO Number': 'imo_number',
@@ -215,6 +215,8 @@ class ETLPipeline():
         logger.info('Renamed the column names')
         df = df.rename(columns=column_names)
         
+        logger.info('==> Transformation is done. <==')
+        
         return df
 
     def load(self, clean_dataframe: pd.DataFrame, report_name:str, bucket_layer:str):
@@ -222,9 +224,7 @@ class ETLPipeline():
 
         Args:
             cleaned_emission_report (pd.DataFrame): the cleaned up report
-        """
-        logger.info('=== load function ===')
-        
+        """        
         logger.info(f"uploading the clean file: {report_name} to the silver bucket")        
         self.storage_client.upload_parquet_file_to_bucket(
             bucket_layer=bucket_layer, 
@@ -237,6 +237,8 @@ class ETLPipeline():
         metadata = {'processed_by_ETL': True, 'processed_date':datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
         blob.metadata = metadata
         blob.patch(if_metageneration_match=metageneration_match_precondition)
+        
+        logger.info('==> Loading is done. <==')
         
     
     def run(self):
