@@ -1,4 +1,5 @@
 import os
+import warnings
 import pandas as pd
 
 from dotenv import load_dotenv
@@ -6,6 +7,7 @@ from google.cloud import storage
 from io import StringIO, BytesIO
 
 load_dotenv()
+warnings.filterwarnings('ignore', category=UserWarning, module='openpyxl')
 
 class GoogleCloudStorageManager():
     """Contains functions and data to manage the storage and management of files in the buckets."""

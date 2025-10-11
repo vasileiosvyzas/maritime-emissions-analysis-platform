@@ -39,9 +39,8 @@ class ETLPipeline():
         logger.info("Blobs:")
         for blob in blobs:
             if blob.name.endswith('.xlsx'):
-                logger.info(blob.name)
                 if blob.metadata['processed_by_ETL'] == 'False':
-                    logger.info("Reading files contents in memory")
+                    logger.info(f"Needs to be processed by ETL: {blob.name}")
                     bucket_layer, year, filename = blob.name.split('/')
                     df = self.storage_client.download_file_into_memory(blob_name=f"{year}/{filename}", bucket_layer=bucket_layer)
                     logger.info("Adding dataset contents to list")
@@ -51,7 +50,7 @@ class ETLPipeline():
         
         return df_to_process
     
-    def _clean_column_name(text):
+    def _clean_column_name(self, text):
         """Clean column names with special handling for common patterns"""
         if text == 'IMO Number.1':
             text = 'ship_company_imo_number'
