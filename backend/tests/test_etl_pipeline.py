@@ -59,6 +59,11 @@ def _build_minimal_input_df():
         'DoC expiry date': ['15/03/2024'],
         'Verifier Number': ['V123'],
         'Verifier Address': ['Addr'],
+        'Verifier Name': ['Test Verifier'],
+        'Verifier NAB': ['NAB123'],
+        'Verifier City': ['Test City'],
+        'Verifier Accreditation number': ['ACC123'],
+        'Verifier Country': ['Test Country'],
         'D.1': ['x'],
         'Additional information to facilitate the understanding of the reported average operational energy efficiency indicators': ['info'],
         'A': ['Yes'],
@@ -98,9 +103,9 @@ def test_extract(etl_pipeline):
     pd.testing.assert_frame_equal(result['bronze-bucket/2023/report1.xlsx'], sample_df)
 
 def test_transform(etl_pipeline, sample_data):
-    """Test the transform method of ETLPipeline."""
+    """Test the transform method of ETLPipeline."""    
     # Call the transform method
-    result = etl_pipeline.tranform(sample_data.copy())
+    result = etl_pipeline.tranform(sample_data.copy(), file_='bronze-bucket/2024/2024-v2-15032023-info.csv')
     
     # Assertions for columns that should be removed
     assert 'D.1' not in result.columns
@@ -174,8 +179,9 @@ def test_run(etl_pipeline):
         # Setup return values
         mock_df = pd.DataFrame({'test': [1, 2]})
         mock_transformed_df = pd.DataFrame({'processed': [3, 4]})
+        test_file = 'bronze-bucket/2023/report.xlsx'
         
-        mock_extract.return_value = {'bronze-bucket/2023/report.xlsx': mock_df}
+        mock_extract.return_value = {test_file: mock_df}
         mock_transform.return_value = mock_transformed_df
         
         # Setup blob mock for metadata update
@@ -187,14 +193,14 @@ def test_run(etl_pipeline):
         
         # Assertions
         mock_extract.assert_called_once()
-        mock_transform.assert_called_once_with(df=mock_df)
+        mock_transform.assert_called_once_with(df=mock_df, file_=test_file)  # Updated assertion
         mock_load.assert_called_once_with(
             clean_dataframe=mock_transformed_df, 
             report_name='2023/report.parquet', 
             bucket_layer='silver-bucket'
         )
         
-        etl_pipeline.storage_client.bucket.get_blob.assert_called_once_with('bronze-bucket/2023/report.xlsx')
+        etl_pipeline.storage_client.bucket.get_blob.assert_called_once_with(test_file)
         
         assert mock_blob.metadata['processed_by_ETL'] is True
         assert 'processed_date' in mock_blob.metadata
