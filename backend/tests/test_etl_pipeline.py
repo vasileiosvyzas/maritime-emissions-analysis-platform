@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import patch, Mock
 import pandas as pd
 import datetime
+import pandas.api.types as ptypes
 from src.etl_pipeline import ETLPipeline
 
 @pytest.fixture
@@ -43,6 +44,28 @@ def sample_data():
         # Columns to be dropped
         'D.1': ['drop1', 'drop2'],
         'Additional information to facilitate the understanding of the reported average operational energy efficiency indicators': ['info1', 'info2']
+    })
+
+def _build_minimal_input_df():
+    return pd.DataFrame({
+        'IMO Number': [1234567],
+        'Name': ['Test Ship'],
+        'Ship type': ['Bulk Carrier'],
+        'Reporting Period': ['2024'],
+        'Port of Registry': ['Port'],
+        'Home Port': ['Home'],
+        'Ice Class': ['IC'],
+        'DoC issue date': ['15/03/2023'],
+        'DoC expiry date': ['15/03/2024'],
+        'Verifier Number': ['V123'],
+        'Verifier Address': ['Addr'],
+        'D.1': ['x'],
+        'Additional information to facilitate the understanding of the reported average operational energy efficiency indicators': ['info'],
+        'A': ['Yes'],
+        'B': ['No'],
+        'C': ['No'],
+        'D': ['No'],
+        'Technical efficiency': ['Type (12.34 unit)'],
     })
 
 def test_extract(etl_pipeline):
@@ -176,3 +199,23 @@ def test_run(etl_pipeline):
         assert mock_blob.metadata['processed_by_ETL'] is True
         assert 'processed_date' in mock_blob.metadata
         mock_blob.patch.assert_called_once()
+
+def test_tranform_adds_version_and_date_from_filename():
+    """Test that version and generation date are extracted from filename."""
+    pipeline = object.__new__(ETLPipeline)
+    df = _build_minimal_input_df()
+    
+    # Pass filepath that contains version and date information
+    test_filepath = 'bronze-bucket/2024/2024-v2-15032023-info.xlsx'
+    
+    result = pipeline.tranform(df=df, file_=test_filepath)
+    
+    # Check version column
+    assert 'version' in result.columns
+    assert result['version'].iloc[0] == '2'
+    
+    # Check generation_date column  
+    assert 'generation_date' in result.columns
+    gen_date = result['generation_date'].iloc[0]
+    assert ptypes.is_datetime64_any_dtype(result['generation_date'].dtype)
+    assert pd.Timestamp('2023-03-15') == pd.Timestamp(gen_date)

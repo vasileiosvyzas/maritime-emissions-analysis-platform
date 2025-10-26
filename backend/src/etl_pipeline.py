@@ -83,7 +83,7 @@ class ETLPipeline():
         
         return text        
 
-    def tranform(self, df: pd.DataFrame) -> pd.DataFrame:
+    def tranform(self, df: pd.DataFrame, file_: str) -> pd.DataFrame:
         """Does all the transformations on the emission report to make it clean
 
         Args:
@@ -214,6 +214,13 @@ class ETLPipeline():
         logger.info('Applied the column renaming')
         df = df.rename(columns=column_names)
         
+        bucket, reporting_year, filename = file_.split('/')
+        reporting_year, version, generation_date, text_info = filename.split('-')
+        
+        print('Adding new columns for the version and generation_date metadata')
+        df['version'] = version.replace('v', '')
+        df['generation_date'] = pd.to_datetime(generation_date, format='%d%m%Y')
+        
         logger.info('==> Transformation is done. <==')
         
         return df
@@ -244,7 +251,7 @@ class ETLPipeline():
         raw_data_list = self.extract()
         
         for df_name, df_contents in raw_data_list.items():
-            transformed_df = self.tranform(df=df_contents)
+            transformed_df = self.tranform(df=df_contents, file_=df_name)
             
             bucket_layer, year, filename =df_name.split('/')
             print()
