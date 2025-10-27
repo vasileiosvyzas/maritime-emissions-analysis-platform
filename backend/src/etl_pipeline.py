@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 from typing import List, Optional, Dict
 from sys import stdout
-from src.google_cloud_storage_manager import GoogleCloudStorageManager
+from .google_cloud_storage_manager import GoogleCloudStorageManager
 
 pd.set_option('future.no_silent_downcasting', True)
 
