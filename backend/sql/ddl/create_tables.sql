@@ -1,21 +1,21 @@
-CREATE TABLE dim_ship (
+CREATE TABLE `{project}.{dataset}.dim_ship` (
     imo_number INT64 NOT NULL,
     current_name STRING NOT NULL,
     current_ship_type STRING,
-    current_home_port STRING NULL,
-    current_port_of_registry STRING NULL,
-    ice_class STRING NULL,
-    latest_reporting_period INT,
-    latest_version INT,
+    current_home_port STRING,
+    current_port_of_registry STRING,
+    ice_class STRING,
+    latest_reporting_period INT64,
+    latest_version INT64,
     latest_generation_date DATE
 );
 
-CREATE TABLE dim_company (
+CREATE TABLE `{project}.{dataset}.dim_company` (
   company_id      INT64    NOT NULL,
   company_name    STRING  NOT NULL
 );
 
-CREATE TABLE dim_verifier (
+CREATE TABLE `{project}.{dataset}.dim_verifier` (
   verifier_accreditation_number  STRING  NOT NULL,
   verifier_name                  STRING  NOT NULL,
   verifier_city                  STRING,
@@ -31,7 +31,7 @@ CREATE TABLE dim_verifier (
 -- ship_company_imo_number → dim_company.company_id
 -- verifier_accreditation_number → dim_verifier.verifier_accreditation_number
 
-CREATE TABLE fact_mrv_annual_report (
+CREATE TABLE `{project}.{dataset}.fact_mrv_annual_report` (
   -- Foreign keys (logical)
   ship_id                         INT64   NOT NULL,
   ship_company_imo_number         INT64,
@@ -111,28 +111,28 @@ CREATE TABLE fact_mrv_annual_report (
     fuel_consumption_per_distance NUMERIC,
     fuel_consumption_per_distance_on_laden_voyages__kg___n_mile_ NUMERIC,
     fuel_consumption_per_transport_work__mass_ NUMERIC,
-    fuel_consumption_per_transport_work__mass__on_laden_voyages__g___m_tonnes___n_miles NUMERIC_
+    fuel_consumption_per_transport_work__mass__on_laden_voyages__g___m_tonnes___n_miles NUMERIC,
     fuel_consumption_per_transport_work__volume_ NUMERIC,
-    fuel_consumption_per_transport_work__volume__on_laden_voyages__g___m____n_miles NUMERIC_
+    fuel_consumption_per_transport_work__volume__on_laden_voyages__g___m____n_miles NUMERIC,
     fuel_consumption_per_transport_work__dwt_ NUMERIC,
-    fuel_consumption_per_transport_work__dwt__on_laden_voyages__g___dwt_carried___n_miles NUMERIC_
+    fuel_consumption_per_transport_work__dwt__on_laden_voyages__g___dwt_carried___n_miles NUMERIC,
     fuel_consumption_per_transport_work__pax_ NUMERIC,
-    fuel_consumption_per_transport_work__pax__on_laden_voyages__g___pax___n_miles NUMERIC_
+    fuel_consumption_per_transport_work__pax__on_laden_voyages__g___pax___n_miles NUMERIC,
     fuel_consumption_per_transport_work__freight_ NUMERIC,
-    fuel_consumption_per_transport_work__freight__on_laden_voyages__g___m_tonnes___n_miles NUMERIC_
+    fuel_consumption_per_transport_work__freight__on_laden_voyages__g___m_tonnes___n_miles NUMERIC,
     fuel_consumption_per_time_spent_at_sea NUMERIC,
     co2_emissions_per_distance NUMERIC,
     co__emissions_per_distance_on_laden_voyages__kg_co____n_mile_ NUMERIC,
     co2_emissions_per_transport_work__mass_ NUMERIC,
-    co__emissions_per_transport_work__mass__on_laden_voyages__g_co____m_tonnes___n_miles NUMERIC_
+    co__emissions_per_transport_work__mass__on_laden_voyages__g_co____m_tonnes___n_miles NUMERIC,
     co2_emissions_per_transport_work__volume_ NUMERIC,
-    co__emissions_per_transport_work__volume__on_laden_voyages__g_co____m____n_miles NUMERIC_
+    co__emissions_per_transport_work__volume__on_laden_voyages__g_co____m____n_miles NUMERIC,
     co2_emissions_per_transport_work__dwt_ NUMERIC,
-    co__emissions_per_transport_work__dwt__on_laden_voyages__g_co____dwt_carried___n_miles NUMERIC_
+    co__emissions_per_transport_work__dwt__on_laden_voyages__g_co____dwt_carried___n_miles NUMERIC,
     co2_emissions_per_transport_work__pax_ NUMERIC,
-    co__emissions_per_transport_work__pax__on_laden_voyages__g_co____pax___n_miles NUMERIC_
+    co__emissions_per_transport_work__pax__on_laden_voyages__g_co____pax___n_miles NUMERIC,
     co2_emissions_per_transport_work__freight_ NUMERIC,
-    co__emissions_per_transport_work__freight__on_laden_voyages__g_co____m_tonnes___n_miles NUMERIC_
+    co__emissions_per_transport_work__freight__on_laden_voyages__g_co____m_tonnes___n_miles NUMERIC,
     co2_emissions_per_time_spent_at_sea NUMERIC,
     co2eq_emissions_per_distance NUMERIC,
     co2eq_emissions_per_distance_on_laden_voyages NUMERIC,
@@ -149,4 +149,4 @@ CREATE TABLE fact_mrv_annual_report (
     co2eq_emissions_per_time_spent_at_sea NUMERIC,
     average_density_of_the_cargo_transported__m_tonnes___m__ NUMERIC
 )
-PARTITION BY reporting_period;
+PARTITION BY RANGE_BUCKET(reporting_period, GENERATE_ARRAY(2018, 2026, 1));
