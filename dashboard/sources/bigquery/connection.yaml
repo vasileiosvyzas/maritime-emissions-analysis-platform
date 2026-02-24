@@ -1,0 +1,7 @@
+# This file was automatically generated
+name: bigquery
+type: bigquery
+options:
+  authenticator: gcloud-cli
+  location: europe-west2
+
