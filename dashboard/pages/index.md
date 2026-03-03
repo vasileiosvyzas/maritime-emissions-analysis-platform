@@ -1,11 +1,13 @@
 ---
-title: Welcome to Evidence
+title: Maritime Emissions Dashboard
+description: A dashboard to visualize maritime emissions data, including fuel consumption and CO2 emissions by ship type and over time.
 ---
 
-<Details title='How to edit this page'>
+This dashboard provides an overview of CO2 emissions from ships reporting to the European Union's MRV system. All data is for the most recent complete reporting period.
 
-  This page can be found in your project at `/pages/index.md`. Make a change to the markdown file and save it to see the change take effect in your browser.
-</Details>
+---
+
+## At a Glance: Latest Reporting Period
 
 ```sql big_values
     SELECT *
@@ -17,6 +19,34 @@ title: Welcome to Evidence
   FROM bigquery.dim_ship
   WHERE latest_reporting_period = (SELECT MAX(latest_reporting_period) FROM bigquery.dim_ship)
 ```
+
+<Grid cols=4>
+    <BigValue
+        data={num_ships}
+        value="num_of_ships"
+        title="Total Ships Reporting"
+    />
+    <BigValue
+        data={big_values}
+        value="total_fuel_consumption_mt"
+        title="Total Fuel Consumption"
+        unit="Mt"
+    />
+    <BigValue
+        data={big_values}
+        value="total_co2_mt"
+        title="Total CO2 Emissions"
+        unit="Mt"
+        fmt="0.2f"
+    />
+    <BigValue
+        data={big_values}
+        value="total_co2eq_mt"
+        title="Total CO2eq Emissions"
+        unit="Mt"
+        fmt="0.2fMt"
+    />
+</Grid>
 
 <BigValue 
   data={num_ships} 
@@ -40,6 +70,7 @@ title: Welcome to Evidence
     SELECT *
     FROM bigquery.emissions_trend
 ```
+
 
 
 <LineChart 
@@ -102,12 +133,4 @@ title: Welcome to Evidence
     swapXY=true
 />
 
-## What's Next?
-- [Connect your data sources](settings)
-- Edit/add markdown files in the `pages` folder
-- Deploy your project with [Evidence Cloud](https://evidence.dev/cloud)
 
-## Get Support
-- Message us on [Slack](https://slack.evidence.dev/)
-- Read the [Docs](https://docs.evidence.dev/)
-- Open an issue on [Github](https://github.com/evidence-dev/evidence)
